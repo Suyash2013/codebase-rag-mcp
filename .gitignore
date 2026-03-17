@@ -1,0 +1,14 @@
+data/
+qdrant_storage/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+dist/
+*.egg-info/
+.env
+*.zip
+*.swp
+*.sqlite3
+.idea/
+.vscode/

@@ -1,0 +1,206 @@
+"""Qdrant vector database connection and operations."""
+
+import logging
+from typing import Optional
+
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointStruct,
+    VectorParams,
+)
+
+from config.settings import settings
+
+log = logging.getLogger("codebase-rag-mcp")
+
+_client: Optional[QdrantClient] = None
+
+
+def get_client() -> QdrantClient:
+    """Lazy-loaded Qdrant client connection."""
+    global _client
+    if _client is not None:
+        return _client
+
+    log.info("Connecting to Qdrant at %s:%d", settings.qdrant_host, settings.qdrant_port)
+    _client = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
+    return _client
+
+
+def ensure_collection(vector_size: int) -> None:
+    """Create collection if it doesn't exist."""
+    client = get_client()
+    collections = [c.name for c in client.get_collections().collections]
+
+    if settings.qdrant_collection not in collections:
+        log.info(
+            "Creating collection '%s' (vector_size=%d)",
+            settings.qdrant_collection,
+            vector_size,
+        )
+        client.create_collection(
+            collection_name=settings.qdrant_collection,
+            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+        )
+    else:
+        log.info("Collection '%s' already exists", settings.qdrant_collection)
+
+
+def is_directory_indexed(directory: str) -> bool:
+    """Check if a directory has been ingested by querying metadata."""
+    client = get_client()
+    collections = [c.name for c in client.get_collections().collections]
+    if settings.qdrant_collection not in collections:
+        return False
+
+    results = client.scroll(
+        collection_name=settings.qdrant_collection,
+        scroll_filter=Filter(
+            must=[FieldCondition(key="directory", match=MatchValue(value=directory))]
+        ),
+        limit=1,
+    )
+    points, _ = results
+    return len(points) > 0
+
+
+def upsert_chunks(
+    chunks: list[dict],
+    embeddings: list[list[float]],
+) -> int:
+    """Store embedded chunks in Qdrant.
+
+    Each chunk dict must have: id, text, file_path, directory, chunk_index, ingested_at
+    Returns the number of points upserted.
+    """
+    client = get_client()
+
+    points = [
+        PointStruct(
+            id=chunk["id"],
+            vector=embedding,
+            payload={
+                "text": chunk["text"],
+                "file_path": chunk["file_path"],
+                "directory": chunk["directory"],
+                "chunk_index": chunk["chunk_index"],
+                "ingested_at": chunk["ingested_at"],
+            },
+        )
+        for chunk, embedding in zip(chunks, embeddings)
+    ]
+
+    # Upsert in batches of 100
+    batch_size = 100
+    total = 0
+    for i in range(0, len(points), batch_size):
+        batch = points[i : i + batch_size]
+        client.upsert(collection_name=settings.qdrant_collection, points=batch)
+        total += len(batch)
+
+    return total
+
+
+def search(
+    query_embedding: list[float],
+    n_results: int,
+    directory_filter: Optional[str] = None,
+    file_pattern: Optional[str] = None,
+) -> list[dict]:
+    """Query Qdrant with optional directory and file pattern filters.
+
+    Returns list of dicts with keys: text, file_path, score, directory.
+    """
+    client = get_client()
+
+    must_conditions = []
+    if directory_filter:
+        must_conditions.append(
+            FieldCondition(key="directory", match=MatchValue(value=directory_filter))
+        )
+
+    query_filter = Filter(must=must_conditions) if must_conditions else None
+
+    # If file_pattern is set, fetch extra results and filter client-side
+    fetch_n = n_results * 5 if file_pattern else n_results
+
+    response = client.query_points(
+        collection_name=settings.qdrant_collection,
+        query=query_embedding,
+        query_filter=query_filter,
+        limit=fetch_n,
+    )
+
+    hits = []
+    for point in response.points:
+        payload = point.payload or {}
+        file_path = payload.get("file_path", "unknown")
+
+        if file_pattern and file_pattern.lower() not in file_path.lower():
+            continue
+
+        hits.append(
+            {
+                "text": payload.get("text", ""),
+                "file_path": file_path,
+                "score": point.score,
+                "directory": payload.get("directory", ""),
+            }
+        )
+
+        if len(hits) >= n_results:
+            break
+
+    return hits
+
+
+def get_stats() -> dict:
+    """Get collection statistics."""
+    client = get_client()
+    collections = [c.name for c in client.get_collections().collections]
+
+    if settings.qdrant_collection not in collections:
+        return {
+            "collection_name": settings.qdrant_collection,
+            "exists": False,
+            "total_points": 0,
+        }
+
+    info = client.get_collection(settings.qdrant_collection)
+    return {
+        "collection_name": settings.qdrant_collection,
+        "exists": True,
+        "total_points": info.points_count,
+        "vectors_count": info.vectors_count,
+        "status": str(info.status),
+        "qdrant_host": settings.qdrant_host,
+        "qdrant_port": settings.qdrant_port,
+        "embedding_model": settings.ollama_embed_model,
+    }
+
+
+def delete_directory_points(directory: str) -> int:
+    """Delete all points belonging to a directory. Returns count deleted."""
+    client = get_client()
+    # Get count before deletion
+    points, _ = client.scroll(
+        collection_name=settings.qdrant_collection,
+        scroll_filter=Filter(
+            must=[FieldCondition(key="directory", match=MatchValue(value=directory))]
+        ),
+        limit=1,
+    )
+    if not points:
+        return 0
+
+    client.delete(
+        collection_name=settings.qdrant_collection,
+        points_selector=Filter(
+            must=[FieldCondition(key="directory", match=MatchValue(value=directory))]
+        ),
+    )
+    return -1  # Qdrant doesn't return count; caller can re-check if needed
