@@ -1,10 +1,8 @@
 """MCP tools for semantic codebase search."""
 
-import json
-
 from config.settings import settings
 from mcp_server.embeddings import get_embedding
-from mcp_server.ingestion import ingest_directory, needs_ingestion
+from mcp_server.ingestion import ingest_directory, ingest_incremental, needs_ingestion
 from mcp_server.qdrant_client import search
 
 
@@ -26,11 +24,17 @@ def _format_results(query: str, hits: list[dict]) -> str:
 
 
 def search_codebase(query: str, n_results: int = 0) -> str:
-    """Semantic search over the indexed codebase.
+    """Semantic search over the indexed codebase — use for conceptual questions.
 
-    AUTO-INGESTS the current working directory if not yet indexed.
-    Use this tool instead of file search when the codebase has been
-    indexed and there are no uncommitted local changes.
+    Use this tool when you need to understand WHERE something is implemented
+    or HOW a concept works across the codebase. Much more token-efficient than
+    reading files one by one. Auto-ingests on first use.
+
+    Good queries: "authentication middleware", "database connection pooling",
+    "error retry logic", "user input validation".
+
+    Do NOT use for: reading a specific known file (use Read), finding files
+    by name (use Glob), or literal text search (use Grep).
 
     Args:
         query: Natural language description of what you're looking for.
@@ -59,15 +63,20 @@ def search_codebase(query: str, n_results: int = 0) -> str:
 def search_codebase_by_file(
     query: str, file_pattern: str, n_results: int = 0
 ) -> str:
-    """Search the codebase with a file path filter.
+    """Semantic search restricted to files matching a path pattern.
 
-    Like search_codebase, but restricts results to files whose path
-    contains the given pattern (case-insensitive substring match).
+    Use when you know the general area of the codebase to search in.
+    Combines semantic understanding with file path filtering.
+
+    Examples:
+        - query="dependency injection", file_pattern="di/module"
+        - query="API routes", file_pattern=".py"
+        - query="build config", file_pattern=".gradle"
 
     Args:
         query: What to search for semantically.
-        file_pattern: Substring to match in file paths, e.g. "viewmodel",
-                      "shared/src", ".gradle", "di/module".
+        file_pattern: Substring to match in file paths (case-insensitive).
+                      E.g. "viewmodel", "shared/src", ".gradle", "test".
         n_results: Number of results to return (1-20, default 10).
     """
     if n_results <= 0:

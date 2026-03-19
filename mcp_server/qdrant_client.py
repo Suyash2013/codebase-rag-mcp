@@ -1,6 +1,7 @@
 """Qdrant vector database connection and operations."""
 
 import logging
+import os
 from typing import Optional
 
 from qdrant_client import QdrantClient
@@ -26,28 +27,45 @@ def get_client() -> QdrantClient:
     if _client is not None:
         return _client
 
-    log.info("Connecting to Qdrant at %s:%d", settings.qdrant_host, settings.qdrant_port)
-    _client = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
+    if settings.qdrant_mode == "local":
+        path = settings.get_qdrant_local_path()
+        os.makedirs(path, exist_ok=True)
+        log.info("Using local Qdrant at %s", path)
+        _client = QdrantClient(path=path)
+    else:
+        log.info("Connecting to Qdrant at %s:%d", settings.qdrant_host, settings.qdrant_port)
+        _client = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
+
     return _client
 
 
 def ensure_collection(vector_size: int) -> None:
-    """Create collection if it doesn't exist."""
+    """Create collection if it doesn't exist. Recreate if vector size changed."""
     client = get_client()
     collections = [c.name for c in client.get_collections().collections]
 
-    if settings.qdrant_collection not in collections:
-        log.info(
-            "Creating collection '%s' (vector_size=%d)",
-            settings.qdrant_collection,
-            vector_size,
-        )
-        client.create_collection(
-            collection_name=settings.qdrant_collection,
-            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
-        )
-    else:
-        log.info("Collection '%s' already exists", settings.qdrant_collection)
+    if settings.qdrant_collection in collections:
+        info = client.get_collection(settings.qdrant_collection)
+        existing_size = info.config.params.vectors.size
+        if existing_size != vector_size:
+            log.warning(
+                "Vector dimension mismatch (existing=%d, new=%d). Recreating collection.",
+                existing_size, vector_size,
+            )
+            client.delete_collection(settings.qdrant_collection)
+        else:
+            log.info("Collection '%s' already exists (vector_size=%d)", settings.qdrant_collection, vector_size)
+            return
+
+    log.info(
+        "Creating collection '%s' (vector_size=%d)",
+        settings.qdrant_collection,
+        vector_size,
+    )
+    client.create_collection(
+        collection_name=settings.qdrant_collection,
+        vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+    )
 
 
 def is_directory_indexed(directory: str) -> bool:
@@ -171,16 +189,24 @@ def get_stats() -> dict:
         }
 
     info = client.get_collection(settings.qdrant_collection)
-    return {
+    stats = {
         "collection_name": settings.qdrant_collection,
         "exists": True,
         "total_points": info.points_count,
         "vectors_count": info.vectors_count,
         "status": str(info.status),
-        "qdrant_host": settings.qdrant_host,
-        "qdrant_port": settings.qdrant_port,
-        "embedding_model": settings.ollama_embed_model,
+        "embedding_provider": settings.embedding_provider,
     }
+
+    if settings.qdrant_mode == "local":
+        stats["qdrant_mode"] = "local"
+        stats["qdrant_path"] = settings.get_qdrant_local_path()
+    else:
+        stats["qdrant_mode"] = "remote"
+        stats["qdrant_host"] = settings.qdrant_host
+        stats["qdrant_port"] = settings.qdrant_port
+
+    return stats
 
 
 def delete_directory_points(directory: str) -> int:

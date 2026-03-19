@@ -10,13 +10,30 @@ class Settings(BaseSettings):
     """All settings are configurable via environment variables with the RAG_ prefix."""
 
     # Qdrant
+    qdrant_mode: str = "local"  # "local" (on-disk, zero-config) | "remote" (Docker/cloud)
+    qdrant_local_path: str = ""  # defaults to {working_dir}/.codebase-rag/qdrant
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
     qdrant_collection: str = "codebase"
 
+    # Embedding provider
+    embedding_provider: str = "onnx"  # "onnx" | "ollama" | "openai" | "voyage"
+
+    # ONNX local embeddings (default, zero-config)
+    onnx_model_name: str = "all-MiniLM-L6-v2"
+    onnx_model_path: str = ""  # defaults to {working_dir}/.codebase-rag/models/
+
     # Ollama embeddings
     ollama_base_url: str = "http://localhost:11434"
     ollama_embed_model: str = "snowflake-arctic-embed:latest"
+
+    # OpenAI embeddings
+    openai_api_key: str = ""
+    openai_embed_model: str = "text-embedding-3-small"
+
+    # Voyage AI embeddings
+    voyage_api_key: str = ""
+    voyage_embed_model: str = "voyage-code-3"
 
     # Ingestion
     ingestion_timeout_hours: int = 24
@@ -27,10 +44,6 @@ class Settings(BaseSettings):
     default_n_results: int = 10
     max_n_results: int = 20
 
-    # Langflow (for bidirectional communication)
-    langflow_base_url: str = "http://localhost:7860"
-    langflow_flow_id: str = ""
-
     # Runtime — set to cwd at startup if not overridden
     working_directory: str = ""
 
@@ -38,6 +51,16 @@ class Settings(BaseSettings):
 
     def get_working_directory(self) -> str:
         return self.working_directory or os.getcwd()
+
+    def get_qdrant_local_path(self) -> str:
+        if self.qdrant_local_path:
+            return self.qdrant_local_path
+        return str(Path(self.get_working_directory()) / ".codebase-rag" / "qdrant")
+
+    def get_onnx_model_path(self) -> str:
+        if self.onnx_model_path:
+            return self.onnx_model_path
+        return str(Path(self.get_working_directory()) / ".codebase-rag" / "models")
 
 
 # Singleton instance

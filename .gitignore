@@ -1,5 +1,6 @@
 data/
 qdrant_storage/
+.codebase-rag/
 __pycache__/
 *.pyc
 *.pyo

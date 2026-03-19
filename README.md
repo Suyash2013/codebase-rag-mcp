@@ -1,145 +1,90 @@
 # codebase-rag-mcp
 
-Claude Code MCP plugin for semantic codebase search via Qdrant + Ollama.
+A Claude Code MCP plugin that provides token-efficient semantic codebase search. Instead of Claude burning tokens with repeated Glob/Grep/Read cycles, it hits this plugin for semantic search first and gets relevant context cheaply.
 
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────┐
-│ INGESTION (auto or manual)                           │
-│                                                      │
-│ Working Dir ──► Chunk ──► Embed ──► Qdrant           │
-│   (.gitignore    (1000/200)  (snowflake-    (cosine  │
-│    aware)                     arctic-embed)  search) │
-└───────────────────────┬──────────────────────────────┘
-                        │
-                        ▼
-┌──────────────────────────────────────────────────────┐
-│ RETRIEVAL (MCP server — Claude Code plugin)          │
-│                                                      │
-│ Claude Code ──► MCP tool ──► this server             │
-│                                  │                   │
-│                  ┌───────────────┘                   │
-│                  ▼                                   │
-│           Ollama (embed query)                       │
-│                  │                                   │
-│                  ▼                                   │
-│           Qdrant (similarity search)                 │
-│                  │                                   │
-│                  ▼                                   │
-│           code chunks ──► Claude Code                │
-└──────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────┐
-│ LANGFLOW (optional bidirectional)                    │
-│                                                      │
-│ Langflow ◄──► MCP Bridge Component ◄──► Qdrant      │
-│ Langflow ◄──── trigger_langflow_ingestion (MCP tool) │
-└──────────────────────────────────────────────────────┘
-```
-
-## Prerequisites
-
-1. **Qdrant** running locally:
-   ```bash
-   docker run -p 6333:6333 qdrant/qdrant
-   ```
-
-2. **Ollama** running with snowflake-arctic-embed:
-   ```bash
-   ollama pull snowflake-arctic-embed
-   ```
-
-3. **Python 3.10+** with `uv` (recommended) or `pip`.
-
-## Setup
+## Quick Start
 
 ```bash
-# Install dependencies
-uv sync
+pip install codebase-rag-mcp
+codebase-rag-setup
+```
 
-# Verify services
+That's it. Restart Claude Code and the plugin auto-indexes your codebase on first search.
+
+## How It Works
+
+```
+Your Code → Chunking → Embedding → Qdrant (local)
+                                       ↓
+Claude Code → MCP Tool Call → Semantic Search → Relevant Code Snippets
+```
+
+1. **First search** auto-ingests your working directory (chunks files, generates embeddings, stores in local Qdrant)
+2. **Subsequent searches** are fast semantic lookups — no re-ingestion needed
+3. **Incremental updates** detect git changes and only re-embed modified files
+
+## MCP Tools
+
+| Tool | Purpose |
+|------|---------|
+| `search_codebase` | Semantic search — "where is auth handled?", "how does retry work?" |
+| `search_codebase_by_file` | Semantic search filtered by file path pattern |
+| `get_codebase_context` | Compressed project overview (languages, structure, dependencies) |
+| `get_file_signatures` | Function/class signatures without reading every file |
+| `get_dependency_graph` | Internal import/dependency graph |
+| `collection_stats` | Index size and configuration |
+| `ingest_current_directory` | Manual re-index (incremental by default, `force=True` for full) |
+| `check_index_status` | Is the index current? Any uncommitted changes? |
+
+## Embedding Providers
+
+Zero-config by default. Choose your provider:
+
+| Provider | Config | Notes |
+|----------|--------|-------|
+| **ONNX** (default) | None needed | Auto-downloads all-MiniLM-L6-v2 (23MB, 384-dim) |
+| **Ollama** | `RAG_EMBEDDING_PROVIDER=ollama` | Requires Ollama running with model pulled |
+| **OpenAI** | `RAG_EMBEDDING_PROVIDER=openai` + `RAG_OPENAI_API_KEY=sk-...` | text-embedding-3-small |
+| **Voyage** | `RAG_EMBEDDING_PROVIDER=voyage` + `RAG_VOYAGE_API_KEY=...` | voyage-code-3 (optimized for code) |
+
+## Storage
+
+By default, uses Qdrant in local/on-disk mode — no Docker needed. Data stored in `.codebase-rag/` under your project directory.
+
+For remote Qdrant:
+```bash
+RAG_QDRANT_MODE=remote
+RAG_QDRANT_HOST=your-host
+RAG_QDRANT_PORT=6333
+```
+
+## Configuration
+
+All settings via environment variables with `RAG_` prefix. See `config/.env.example` for the full reference.
+
+## Development
+
+```bash
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+python -m pytest tests/ -v
+
+# Health check
 python scripts/health_check.py
-
-# Test the server
-uv run mcp_server/server.py
 ```
 
-## Register with Claude Code
+## Manual MCP Registration
 
-### Quick setup
-```powershell
-claude mcp add codebase-rag -s user -- uv run --directory "E:\path\to\codebase-rag-mcp" python mcp_server/server.py
-```
+If `codebase-rag-setup` doesn't work, add this to your Claude Code MCP config:
 
-### Manual setup
-Add to `.claude/mcp.json`:
 ```json
 {
   "mcpServers": {
     "codebase-rag": {
-      "command": "uv",
-      "args": ["run", "--directory", "<path-to-this-repo>", "python", "mcp_server/server.py"],
-      "env": {
-        "RAG_QDRANT_HOST": "localhost",
-        "RAG_QDRANT_PORT": "6333",
-        "RAG_OLLAMA_EMBED_MODEL": "snowflake-arctic-embed:latest"
-      }
+      "command": "codebase-rag"
     }
   }
 }
 ```
-
-### Verify
-In Claude Code, run `/mcp` — you should see `codebase-rag` with 6 tools.
-
-## Available Tools
-
-| Tool | Description |
-|------|-------------|
-| `search_codebase(query, n_results)` | Semantic search. Auto-ingests on first use. Preferred over file search when no local changes. |
-| `search_codebase_by_file(query, file_pattern, n_results)` | Search filtered by file path substring. |
-| `collection_stats()` | Qdrant collection statistics. |
-| `ingest_current_directory(force)` | Manual ingestion. Use `force=True` to re-index. |
-| `check_index_status()` | Check if indexed + detect local git changes. |
-| `trigger_langflow_ingestion(directory)` | Trigger Langflow pipeline via REST API. |
-
-## Configuration
-
-All via env vars with `RAG_` prefix. See `config/.env.example` for full list.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RAG_QDRANT_HOST` | `localhost` | Qdrant server host |
-| `RAG_QDRANT_PORT` | `6333` | Qdrant server port |
-| `RAG_QDRANT_COLLECTION` | `codebase` | Collection name |
-| `RAG_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
-| `RAG_OLLAMA_EMBED_MODEL` | `snowflake-arctic-embed:latest` | Embedding model |
-| `RAG_INGESTION_TIMEOUT_HOURS` | `24` | Max ingestion time |
-| `RAG_CHUNK_SIZE` | `1000` | Text chunk size |
-| `RAG_CHUNK_OVERLAP` | `200` | Overlap between chunks |
-| `RAG_WORKING_DIRECTORY` | (cwd) | Override working directory |
-
-## Project Structure
-
-```
-├── mcp_server/           MCP server package
-│   ├── server.py         Entrypoint (FastMCP)
-│   ├── embeddings.py     Ollama embedding helper
-│   ├── qdrant_client.py  Qdrant operations
-│   ├── ingestion.py      Auto-ingestion engine
-│   └── tools/            MCP tool definitions
-├── flows/                Langflow JSON exports
-├── components/           Custom Langflow components
-├── config/               Settings (pydantic-settings)
-├── scripts/              Health check, validation
-└── tests/                pytest suite
-```
-
-## Key Behaviors
-
-- **Auto-ingestion**: First search in an un-indexed directory triggers automatic ingestion
-- **Search priority**: Preferred over file search when codebase is indexed and no uncommitted changes
-- **.gitignore aware**: Ingestion skips files matching .gitignore patterns
-- **24-hour timeout**: Long-running ingestion has a configurable timeout (default 24h)
-- **Incremental**: Re-ingestion replaces previous index for the directory

@@ -1,8 +1,6 @@
 """Shared test fixtures."""
 
 import os
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -58,9 +56,11 @@ def tmp_codebase(tmp_path):
 def mock_settings(tmp_path):
     """Provide test Settings with overridden values."""
     with patch.dict(os.environ, {
+        "RAG_QDRANT_MODE": "local",
         "RAG_QDRANT_HOST": "localhost",
         "RAG_QDRANT_PORT": "6333",
         "RAG_QDRANT_COLLECTION": "test_codebase",
+        "RAG_EMBEDDING_PROVIDER": "ollama",
         "RAG_OLLAMA_BASE_URL": "http://localhost:11434",
         "RAG_OLLAMA_EMBED_MODEL": "snowflake-arctic-embed:latest",
         "RAG_WORKING_DIRECTORY": str(tmp_path),
@@ -71,5 +71,5 @@ def mock_settings(tmp_path):
 
 @pytest.fixture
 def sample_embedding():
-    """A fake 1024-dimension embedding vector."""
-    return [0.01 * i for i in range(1024)]
+    """A fake 384-dimension embedding vector (matches ONNX default)."""
+    return [0.01 * i for i in range(384)]
