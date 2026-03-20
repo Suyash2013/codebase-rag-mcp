@@ -14,18 +14,16 @@ from textwrap import dedent
 from mcp.server.fastmcp import FastMCP
 
 from config.settings import settings
+from mcp_server.tools.context import get_codebase_context
 from mcp_server.tools.ingest import (
     check_index_status,
     ingest_current_directory,
 )
-from mcp_server.tools.context import get_codebase_context
 from mcp_server.tools.search import search_codebase, search_codebase_by_file
 from mcp_server.tools.stats import collection_stats
 from mcp_server.tools.structure import get_dependency_graph, get_file_signatures
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("codebase-rag-mcp")
 
 mcp = FastMCP(
@@ -75,10 +73,13 @@ mcp.tool()(get_dependency_graph)
 if __name__ == "__main__":
     log.info("Starting codebase-rag MCP server")
     log.info("  Embedding: %s", settings.embedding_provider)
-    log.info("  Qdrant:    %s", (
-        f"local ({settings.get_qdrant_local_path()})"
-        if settings.qdrant_mode == "local"
-        else f"remote ({settings.qdrant_host}:{settings.qdrant_port})"
-    ))
+    log.info(
+        "  Qdrant:    %s",
+        (
+            f"local ({settings.get_qdrant_local_path()})"
+            if settings.qdrant_mode == "local"
+            else f"remote ({settings.qdrant_host}:{settings.qdrant_port})"
+        ),
+    )
     log.info("  Working:   %s", settings.get_working_directory())
     mcp.run()

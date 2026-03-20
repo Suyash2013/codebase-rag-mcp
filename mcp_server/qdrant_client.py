@@ -2,7 +2,6 @@
 
 import logging
 import os
-from typing import Optional
 
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import (
@@ -18,7 +17,7 @@ from config.settings import settings
 
 log = logging.getLogger("codebase-rag-mcp")
 
-_client: Optional[QdrantClient] = None
+_client: QdrantClient | None = None
 
 
 def get_client() -> QdrantClient:
@@ -46,15 +45,21 @@ def ensure_collection(vector_size: int) -> None:
 
     if settings.qdrant_collection in collections:
         info = client.get_collection(settings.qdrant_collection)
-        existing_size = info.config.params.vectors.size
+        vectors = info.config.params.vectors
+        existing_size = vectors.size if isinstance(vectors, VectorParams) else None
         if existing_size != vector_size:
             log.warning(
                 "Vector dimension mismatch (existing=%d, new=%d). Recreating collection.",
-                existing_size, vector_size,
+                existing_size,
+                vector_size,
             )
             client.delete_collection(settings.qdrant_collection)
         else:
-            log.info("Collection '%s' already exists (vector_size=%d)", settings.qdrant_collection, vector_size)
+            log.info(
+                "Collection '%s' already exists (vector_size=%d)",
+                settings.qdrant_collection,
+                vector_size,
+            )
             return
 
     log.info(
@@ -109,7 +114,7 @@ def upsert_chunks(
                 "ingested_at": chunk["ingested_at"],
             },
         )
-        for chunk, embedding in zip(chunks, embeddings)
+        for chunk, embedding in zip(chunks, embeddings, strict=False)
     ]
 
     # Upsert in batches of 100
@@ -126,8 +131,8 @@ def upsert_chunks(
 def search(
     query_embedding: list[float],
     n_results: int,
-    directory_filter: Optional[str] = None,
-    file_pattern: Optional[str] = None,
+    directory_filter: str | None = None,
+    file_pattern: str | None = None,
 ) -> list[dict]:
     """Query Qdrant with optional directory and file pattern filters.
 
@@ -141,7 +146,7 @@ def search(
             FieldCondition(key="directory", match=MatchValue(value=directory_filter))
         )
 
-    query_filter = Filter(must=must_conditions) if must_conditions else None
+    query_filter = Filter(must=must_conditions) if must_conditions else None  # type: ignore[arg-type]
 
     # If file_pattern is set, fetch extra results and filter client-side
     fetch_n = n_results * 5 if file_pattern else n_results
@@ -193,7 +198,7 @@ def get_stats() -> dict:
         "collection_name": settings.qdrant_collection,
         "exists": True,
         "total_points": info.points_count,
-        "vectors_count": info.vectors_count,
+        "vectors_count": info.indexed_vectors_count,
         "status": str(info.status),
         "embedding_provider": settings.embedding_provider,
     }

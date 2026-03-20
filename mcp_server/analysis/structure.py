@@ -5,14 +5,23 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger("codebase-rag-mcp")
 
 # Directories to skip during analysis
 SKIP_DIRS = {
-    "node_modules", "__pycache__", "venv", ".venv", "dist", "build",
-    ".git", ".codebase-rag", ".idea", ".vscode", "target", ".gradle",
+    "node_modules",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "dist",
+    "build",
+    ".git",
+    ".codebase-rag",
+    ".idea",
+    ".vscode",
+    "target",
+    ".gradle",
 }
 
 
@@ -52,7 +61,7 @@ def _extract_python_signatures(source: str) -> list[dict]:
 
     signatures = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             params = []
             for arg in node.args.args:
                 param = arg.arg
@@ -63,26 +72,32 @@ def _extract_python_signatures(source: str) -> list[dict]:
             return_type = ast.unparse(node.returns) if node.returns else None
             docstring = ast.get_docstring(node)
 
-            signatures.append({
-                "name": node.name,
-                "type": "async_function" if isinstance(node, ast.AsyncFunctionDef) else "function",
-                "line": node.lineno,
-                "params": params,
-                "return_type": return_type,
-                "docstring": docstring[:100] if docstring else None,
-            })
+            signatures.append(
+                {
+                    "name": node.name,
+                    "type": "async_function"
+                    if isinstance(node, ast.AsyncFunctionDef)
+                    else "function",
+                    "line": node.lineno,
+                    "params": params,
+                    "return_type": return_type,
+                    "docstring": docstring[:100] if docstring else None,
+                }
+            )
 
         elif isinstance(node, ast.ClassDef):
             bases = [ast.unparse(b) for b in node.bases]
             docstring = ast.get_docstring(node)
 
-            signatures.append({
-                "name": node.name,
-                "type": "class",
-                "line": node.lineno,
-                "bases": bases,
-                "docstring": docstring[:100] if docstring else None,
-            })
+            signatures.append(
+                {
+                    "name": node.name,
+                    "type": "class",
+                    "line": node.lineno,
+                    "bases": bases,
+                    "docstring": docstring[:100] if docstring else None,
+                }
+            )
 
     return signatures
 
@@ -96,33 +111,37 @@ def _extract_js_ts_signatures(source: str) -> list[dict]:
         r"(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)",
         source,
     ):
-        line = source[:m.start()].count("\n") + 1
-        signatures.append({
-            "name": m.group(1),
-            "type": "function",
-            "line": line,
-            "params": [p.strip() for p in m.group(2).split(",") if p.strip()],
-        })
+        line = source[: m.start()].count("\n") + 1
+        signatures.append(
+            {
+                "name": m.group(1),
+                "type": "function",
+                "line": line,
+                "params": [p.strip() for p in m.group(2).split(",") if p.strip()],
+            }
+        )
 
     # Arrow functions: const name = (params) =>
     for m in re.finditer(
         r"(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(([^)]*)\)\s*(?::\s*\w+)?\s*=>",
         source,
     ):
-        line = source[:m.start()].count("\n") + 1
-        signatures.append({
-            "name": m.group(1),
-            "type": "arrow_function",
-            "line": line,
-            "params": [p.strip() for p in m.group(2).split(",") if p.strip()],
-        })
+        line = source[: m.start()].count("\n") + 1
+        signatures.append(
+            {
+                "name": m.group(1),
+                "type": "arrow_function",
+                "line": line,
+                "params": [p.strip() for p in m.group(2).split(",") if p.strip()],
+            }
+        )
 
     # Classes
     for m in re.finditer(
         r"(?:export\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?",
         source,
     ):
-        line = source[:m.start()].count("\n") + 1
+        line = source[: m.start()].count("\n") + 1
         sig = {"name": m.group(1), "type": "class", "line": line}
         if m.group(2):
             sig["bases"] = [m.group(2)]
@@ -133,7 +152,7 @@ def _extract_js_ts_signatures(source: str) -> list[dict]:
         r"(?:export\s+)?interface\s+(\w+)(?:\s+extends\s+([\w,\s]+))?",
         source,
     ):
-        line = source[:m.start()].count("\n") + 1
+        line = source[: m.start()].count("\n") + 1
         sig = {"name": m.group(1), "type": "interface", "line": line}
         if m.group(2):
             sig["bases"] = [b.strip() for b in m.group(2).split(",")]
@@ -150,7 +169,7 @@ def _extract_go_signatures(source: str) -> list[dict]:
         r"func\s+(?:\((\w+)\s+\*?(\w+)\)\s+)?(\w+)\s*\(([^)]*)\)(?:\s+([^{]+))?",
         source,
     ):
-        line = source[:m.start()].count("\n") + 1
+        line = source[: m.start()].count("\n") + 1
         name = m.group(3)
         receiver = m.group(2)
         params = [p.strip() for p in m.group(4).split(",") if p.strip()]
@@ -167,11 +186,11 @@ def _extract_go_signatures(source: str) -> list[dict]:
         signatures.append(sig)
 
     for m in re.finditer(r"type\s+(\w+)\s+struct", source):
-        line = source[:m.start()].count("\n") + 1
+        line = source[: m.start()].count("\n") + 1
         signatures.append({"name": m.group(1), "type": "struct", "line": line})
 
     for m in re.finditer(r"type\s+(\w+)\s+interface", source):
-        line = source[:m.start()].count("\n") + 1
+        line = source[: m.start()].count("\n") + 1
         signatures.append({"name": m.group(1), "type": "interface", "line": line})
 
     return signatures
@@ -186,7 +205,7 @@ def _extract_jvm_signatures(source: str) -> list[dict]:
         r"(?:public|private|protected|internal)?\s*(?:abstract|open|data)?\s*class\s+(\w+)(?:\s*(?:extends|:)\s*(\w+))?",
         source,
     ):
-        line = source[:m.start()].count("\n") + 1
+        line = source[: m.start()].count("\n") + 1
         sig = {"name": m.group(1), "type": "class", "line": line}
         if m.group(2):
             sig["bases"] = [m.group(2)]
@@ -197,21 +216,23 @@ def _extract_jvm_signatures(source: str) -> list[dict]:
         r"(?:public|private|protected)\s+(?:static\s+)?(\w+)\s+(\w+)\s*\(([^)]*)\)",
         source,
     ):
-        line = source[:m.start()].count("\n") + 1
-        signatures.append({
-            "name": m.group(2),
-            "type": "method",
-            "line": line,
-            "return_type": m.group(1),
-            "params": [p.strip() for p in m.group(3).split(",") if p.strip()],
-        })
+        line = source[: m.start()].count("\n") + 1
+        signatures.append(
+            {
+                "name": m.group(2),
+                "type": "method",
+                "line": line,
+                "return_type": m.group(1),
+                "params": [p.strip() for p in m.group(3).split(",") if p.strip()],
+            }
+        )
 
     # Kotlin functions
     for m in re.finditer(
         r"(?:fun|suspend\s+fun)\s+(\w+)\s*\(([^)]*)\)(?:\s*:\s*(\w+))?",
         source,
     ):
-        line = source[:m.start()].count("\n") + 1
+        line = source[: m.start()].count("\n") + 1
         sig = {
             "name": m.group(1),
             "type": "function",
@@ -231,13 +252,15 @@ def _extract_generic_signatures(source: str) -> list[dict]:
 
     # Generic function-like patterns
     for m in re.finditer(r"(?:def|fn|func|function)\s+(\w+)\s*\(([^)]*)\)", source):
-        line = source[:m.start()].count("\n") + 1
-        signatures.append({
-            "name": m.group(1),
-            "type": "function",
-            "line": line,
-            "params": [p.strip() for p in m.group(2).split(",") if p.strip()],
-        })
+        line = source[: m.start()].count("\n") + 1
+        signatures.append(
+            {
+                "name": m.group(1),
+                "type": "function",
+                "line": line,
+                "params": [p.strip() for p in m.group(2).split(",") if p.strip()],
+            }
+        )
 
     return signatures
 
@@ -278,9 +301,8 @@ def _extract_python_imports(source: str) -> list[str]:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 imports.append(alias.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                imports.append(node.module)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imports.append(node.module)
 
     return imports
 
@@ -312,7 +334,7 @@ def _extract_go_imports(source: str) -> list[str]:
 
 def build_dependency_graph(
     directory: str,
-    file_pattern: Optional[str] = None,
+    file_pattern: str | None = None,
 ) -> dict[str, list[str]]:
     """Build a file-level dependency graph.
 

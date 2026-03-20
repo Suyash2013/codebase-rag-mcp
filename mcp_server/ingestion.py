@@ -8,7 +8,6 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 import pathspec
 
@@ -25,38 +24,93 @@ log = logging.getLogger("codebase-rag-mcp")
 
 # File extensions considered as text (code, config, docs)
 TEXT_EXTENSIONS = {
-    ".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".kt", ".kts",
-    ".go", ".rs", ".c", ".cpp", ".h", ".hpp", ".cs", ".rb", ".php",
-    ".swift", ".scala", ".sh", ".bash", ".zsh", ".fish",
-    ".html", ".css", ".scss", ".less", ".vue", ".svelte",
-    ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf",
-    ".xml", ".sql", ".graphql", ".proto",
-    ".md", ".rst", ".txt", ".adoc",
-    ".dockerfile", ".env.example",
-    ".gitignore", ".editorconfig",
-    ".gradle", ".cmake", ".makefile",
+    ".py",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".jsx",
+    ".java",
+    ".kt",
+    ".kts",
+    ".go",
+    ".rs",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".cs",
+    ".rb",
+    ".php",
+    ".swift",
+    ".scala",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".fish",
+    ".html",
+    ".css",
+    ".scss",
+    ".less",
+    ".vue",
+    ".svelte",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".conf",
+    ".xml",
+    ".sql",
+    ".graphql",
+    ".proto",
+    ".md",
+    ".rst",
+    ".txt",
+    ".adoc",
+    ".dockerfile",
+    ".env.example",
+    ".gitignore",
+    ".editorconfig",
+    ".gradle",
+    ".cmake",
+    ".makefile",
 }
 
 # Files without extensions that are typically text
 TEXT_FILENAMES = {
-    "Dockerfile", "Makefile", "CMakeLists.txt", "Jenkinsfile",
-    "Procfile", "Vagrantfile", "Gemfile", "Rakefile",
-    ".gitignore", ".dockerignore", ".editorconfig",
+    "Dockerfile",
+    "Makefile",
+    "CMakeLists.txt",
+    "Jenkinsfile",
+    "Procfile",
+    "Vagrantfile",
+    "Gemfile",
+    "Rakefile",
+    ".gitignore",
+    ".dockerignore",
+    ".editorconfig",
 }
 
 # Directories to always skip
 SKIP_DIRS = {
-    "node_modules", "__pycache__", "venv", ".venv", "dist", "build",
-    ".git", ".codebase-rag",
+    "node_modules",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "dist",
+    "build",
+    ".git",
+    ".codebase-rag",
 }
 
 
-def _load_gitignore(directory: str) -> Optional[pathspec.PathSpec]:
+def _load_gitignore(directory: str) -> pathspec.PathSpec | None:
     """Load .gitignore patterns from the directory."""
     gitignore_path = Path(directory) / ".gitignore"
     if not gitignore_path.exists():
         return None
-    with open(gitignore_path, "r", encoding="utf-8", errors="ignore") as f:
+    with open(gitignore_path, encoding="utf-8", errors="ignore") as f:
         return pathspec.PathSpec.from_lines("gitignore", f)
 
 
@@ -165,7 +219,7 @@ def check_local_changes(directory: str) -> dict:
         return {"is_git_repo": False, "has_changes": False, "details": str(e)}
 
 
-def _get_current_commit(directory: str) -> Optional[str]:
+def _get_current_commit(directory: str) -> str | None:
     """Get the current HEAD commit hash."""
     try:
         result = subprocess.run(
@@ -182,7 +236,7 @@ def _get_current_commit(directory: str) -> Optional[str]:
     return None
 
 
-def _get_last_indexed_commit(directory: str) -> Optional[str]:
+def _get_last_indexed_commit(directory: str) -> str | None:
     """Read the commit hash from the last ingestion marker."""
     marker = Path(directory) / ".codebase-rag" / "last_commit.txt"
     if marker.exists():
@@ -248,10 +302,7 @@ def _collect_text_files(directory: str) -> list[tuple[Path, str]]:
 
     for root, dirs, filenames in os.walk(directory):
         # Skip hidden and non-code directories
-        dirs[:] = [
-            d for d in dirs
-            if not d.startswith(".") and d not in SKIP_DIRS
-        ]
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS]
 
         for filename in filenames:
             filepath = Path(root) / filename
@@ -277,8 +328,8 @@ def _embed_and_chunk_files(
     start_time: float,
 ) -> tuple[list[dict], list[list[float]]]:
     """Chunk and embed a list of files. Returns (chunks, embeddings)."""
-    all_chunks = []
-    all_embeddings = []
+    all_chunks: list[dict] = []
+    all_embeddings: list[list[float]] = []
     now = datetime.now(timezone.utc).isoformat()
 
     for filepath, rel_path in files:
@@ -356,8 +407,7 @@ def ingest_directory(directory: str) -> str:
         _save_indexed_commit(directory, commit)
 
     msg = (
-        f"Ingested {count} chunks from {len(files_to_ingest)} files "
-        f"in {directory} ({elapsed:.1f}s)"
+        f"Ingested {count} chunks from {len(files_to_ingest)} files in {directory} ({elapsed:.1f}s)"
     )
     log.info(msg)
     return msg

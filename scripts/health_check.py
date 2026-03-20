@@ -7,7 +7,9 @@ import sys
 import requests
 
 
-def check_ollama(base_url: str = "http://localhost:11434", model: str = "snowflake-arctic-embed:latest") -> bool:
+def check_ollama(
+    base_url: str = "http://localhost:11434", model: str = "snowflake-arctic-embed:latest"
+) -> bool:
     """Check if Ollama is running and the embedding model is available."""
     print(f"Checking Ollama at {base_url}...")
 
@@ -73,7 +75,7 @@ def check_onnx_model(model_name: str, model_dir: str) -> bool:
         print(f"  Model found at {model_path}")
         return True
     else:
-        print(f"  Model not found (will auto-download on first use)")
+        print("  Model not found (will auto-download on first use)")
         return True  # Not a failure — auto-downloads
 
 
@@ -92,7 +94,7 @@ def main():
     from config.settings import settings
 
     print("=== Codebase RAG MCP — Health Check ===\n")
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  Embedding provider: {settings.embedding_provider}")
     print(f"  Qdrant mode: {settings.qdrant_mode}")
     print(f"  Working directory: {settings.get_working_directory()}")

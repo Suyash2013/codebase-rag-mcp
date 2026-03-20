@@ -1,6 +1,5 @@
 """MCP tools for structural codebase analysis."""
 
-import json
 import os
 from pathlib import Path
 
@@ -12,8 +11,18 @@ from mcp_server.analysis.structure import (
 
 # Directories to skip
 SKIP_DIRS = {
-    "node_modules", "__pycache__", "venv", ".venv", "dist", "build",
-    ".git", ".codebase-rag", ".idea", ".vscode", "target", ".gradle",
+    "node_modules",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "dist",
+    "build",
+    ".git",
+    ".codebase-rag",
+    ".idea",
+    ".vscode",
+    "target",
+    ".gradle",
 }
 
 

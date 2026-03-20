@@ -10,6 +10,7 @@ from pathlib import Path
 def main():
     """Run the MCP server."""
     from mcp_server.server import mcp
+
     mcp.run()
 
 
@@ -39,7 +40,7 @@ def setup():
     # Read existing config
     try:
         if config_path.exists():
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 config = json.load(f)
         else:
             config = {}
@@ -106,23 +107,12 @@ def _find_claude_config() -> Path | None:
 
 def _print_manual_config(command: str, is_direct: bool):
     """Print manual configuration instructions."""
-    if is_direct:
-        config = {
-            "mcpServers": {
-                "codebase-rag": {
-                    "command": "codebase-rag",
-                }
-            }
-        }
+    server_config: dict[str, object] = {"command": command}
+    if not is_direct:
+        server_config["args"] = ["-m", "mcp_server.server"]
     else:
-        config = {
-            "mcpServers": {
-                "codebase-rag": {
-                    "command": command,
-                    "args": ["-m", "mcp_server.server"],
-                }
-            }
-        }
+        server_config["command"] = "codebase-rag"
+    config = {"mcpServers": {"codebase-rag": server_config}}
 
     print(json.dumps(config, indent=2))
 

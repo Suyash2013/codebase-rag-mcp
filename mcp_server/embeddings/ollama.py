@@ -1,6 +1,7 @@
 """Ollama embedding provider — supports both /api/embed (new) and /api/embeddings (legacy)."""
 
 import logging
+from collections.abc import Callable
 
 import requests
 
@@ -14,7 +15,7 @@ class OllamaProvider(EmbeddingProvider):
     """Embedding provider using Ollama's local API."""
 
     def __init__(self) -> None:
-        self._embed_fn = None
+        self._embed_fn: Callable[[str], list[float]] | None = None
 
     def _embed_via_new_api(self, text: str) -> list[float]:
         """Ollama >= 0.4: POST /api/embed  {model, input} -> {embeddings: [[...]]}"""

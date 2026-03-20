@@ -1,17 +1,14 @@
 """Tests for incremental ingestion and git-based change detection."""
 
-import os
 import subprocess
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 
 from mcp_server.ingestion import (
-    get_changed_files,
     _get_current_commit,
     _get_last_indexed_commit,
     _save_indexed_commit,
+    get_changed_files,
 )
 
 
@@ -19,7 +16,9 @@ from mcp_server.ingestion import (
 def git_repo(tmp_path):
     """Create a temporary git repo with some files."""
     subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True
+    )
     subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
 
     (tmp_path / "main.py").write_text("def hello(): pass\n")

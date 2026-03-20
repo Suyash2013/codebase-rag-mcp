@@ -29,8 +29,7 @@ def _download_model(model_name: str, model_dir: str) -> str:
     info = _MODEL_REGISTRY.get(model_name)
     if not info:
         raise RuntimeError(
-            f"Unknown ONNX model '{model_name}'. "
-            f"Available: {', '.join(_MODEL_REGISTRY.keys())}"
+            f"Unknown ONNX model '{model_name}'. Available: {', '.join(_MODEL_REGISTRY.keys())}"
         )
 
     log.info("Downloading ONNX model '%s' (first-time setup)...", model_name)
@@ -38,8 +37,9 @@ def _download_model(model_name: str, model_dir: str) -> str:
 
     try:
         from huggingface_hub import snapshot_download
+
         snapshot_download(
-            repo_id=info["repo_id"],
+            repo_id=str(info["repo_id"]),
             local_dir=str(model_path),
             allow_patterns=["*.onnx", "*.json", "*.txt", "tokenizer*"],
         )
@@ -47,7 +47,7 @@ def _download_model(model_name: str, model_dir: str) -> str:
         raise RuntimeError(
             "huggingface_hub is required for ONNX model auto-download. "
             "Install it with: pip install huggingface-hub"
-        )
+        ) from None
 
     if not onnx_path.exists():
         raise RuntimeError(
@@ -63,9 +63,11 @@ class OnnxLocalProvider(EmbeddingProvider):
     """Zero-config local embedding provider using ONNX Runtime."""
 
     def __init__(self) -> None:
-        self._session = None
-        self._tokenizer = None
-        self._dimension = None
+        from typing import Any
+
+        self._session: Any = None
+        self._tokenizer: Any = None
+        self._dimension: int | None = None
 
     def _ensure_loaded(self) -> None:
         if self._session is not None:
@@ -83,7 +85,7 @@ class OnnxLocalProvider(EmbeddingProvider):
             raise RuntimeError(
                 f"ONNX provider requires onnxruntime and tokenizers. "
                 f"Install with: pip install onnxruntime tokenizers. Error: {e}"
-            )
+            ) from e
 
         onnx_file = Path(model_path) / "model.onnx"
         tokenizer_file = Path(model_path) / "tokenizer.json"
@@ -97,7 +99,7 @@ class OnnxLocalProvider(EmbeddingProvider):
         self._tokenizer.enable_padding(length=512)
 
         info = _MODEL_REGISTRY.get(model_name, {})
-        self._dimension = info.get("dimension", 384)
+        self._dimension = info.get("dimension", 384)  # type: ignore[assignment]
 
         log.info("Loaded ONNX model '%s' (%d-dim)", model_name, self._dimension)
 
@@ -109,6 +111,7 @@ class OnnxLocalProvider(EmbeddingProvider):
         attention_mask = [encoded.attention_mask]
 
         import numpy as np
+
         outputs = self._session.run(
             None,
             {
@@ -130,8 +133,7 @@ class OnnxLocalProvider(EmbeddingProvider):
         return normalized
 
     def dimension(self) -> int:
-        if self._dimension is not None:
+        if self._dimension is None:
             info = _MODEL_REGISTRY.get(settings.onnx_model_name, {})
-            return info.get("dimension", 384)
-        self._ensure_loaded()
+            return info.get("dimension", 384)  # type: ignore[return-value]
         return self._dimension

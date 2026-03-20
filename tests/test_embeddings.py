@@ -12,11 +12,14 @@ from mcp_server.embeddings.ollama import OllamaProvider
 @pytest.fixture(autouse=True)
 def patch_settings():
     """Ensure Ollama settings are configured for tests."""
-    with patch.dict(os.environ, {
-        "RAG_OLLAMA_BASE_URL": "http://localhost:11434",
-        "RAG_OLLAMA_EMBED_MODEL": "snowflake-arctic-embed:latest",
-        "RAG_EMBEDDING_PROVIDER": "ollama",
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "RAG_OLLAMA_BASE_URL": "http://localhost:11434",
+            "RAG_OLLAMA_EMBED_MODEL": "snowflake-arctic-embed:latest",
+            "RAG_EMBEDDING_PROVIDER": "ollama",
+        },
+    ):
         yield
 
 
