@@ -45,7 +45,8 @@ def ensure_collection(vector_size: int) -> None:
 
     if settings.qdrant_collection in collections:
         info = client.get_collection(settings.qdrant_collection)
-        existing_size = info.config.params.vectors.size
+        vectors = info.config.params.vectors
+        existing_size = vectors.size if isinstance(vectors, VectorParams) else None
         if existing_size != vector_size:
             log.warning(
                 "Vector dimension mismatch (existing=%d, new=%d). Recreating collection.",
@@ -145,7 +146,7 @@ def search(
             FieldCondition(key="directory", match=MatchValue(value=directory_filter))
         )
 
-    query_filter = Filter(must=must_conditions) if must_conditions else None
+    query_filter = Filter(must=must_conditions) if must_conditions else None  # type: ignore[arg-type]
 
     # If file_pattern is set, fetch extra results and filter client-side
     fetch_n = n_results * 5 if file_pattern else n_results
@@ -197,7 +198,7 @@ def get_stats() -> dict:
         "collection_name": settings.qdrant_collection,
         "exists": True,
         "total_points": info.points_count,
-        "vectors_count": info.vectors_count,
+        "vectors_count": info.indexed_vectors_count,
         "status": str(info.status),
         "embedding_provider": settings.embedding_provider,
     }
