@@ -1,15 +1,12 @@
 """Tests for ingestion engine."""
 
-import os
-
-import pytest
+from pathlib import Path
 
 from mcp_server.ingestion import (
     _chunk_text,
     _is_text_file,
     _load_gitignore,
 )
-from pathlib import Path
 
 
 def test_chunk_text_small():

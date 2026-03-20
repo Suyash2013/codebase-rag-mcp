@@ -26,8 +26,7 @@ def tmp_codebase(tmp_path):
 
     # Config file
     (tmp_path / "config.yaml").write_text(
-        "server:\n  host: localhost\n  port: 8080\n\n"
-        "database:\n  url: postgres://localhost/mydb\n"
+        "server:\n  host: localhost\n  port: 8080\n\ndatabase:\n  url: postgres://localhost/mydb\n"
     )
 
     # Markdown docs
@@ -36,9 +35,7 @@ def tmp_codebase(tmp_path):
     )
 
     # .gitignore
-    (tmp_path / ".gitignore").write_text(
-        "__pycache__/\n*.pyc\nnode_modules/\n.env\n"
-    )
+    (tmp_path / ".gitignore").write_text("__pycache__/\n*.pyc\nnode_modules/\n.env\n")
 
     # Binary file (should be skipped)
     (tmp_path / "image.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
@@ -55,17 +52,21 @@ def tmp_codebase(tmp_path):
 @pytest.fixture
 def mock_settings(tmp_path):
     """Provide test Settings with overridden values."""
-    with patch.dict(os.environ, {
-        "RAG_QDRANT_MODE": "local",
-        "RAG_QDRANT_HOST": "localhost",
-        "RAG_QDRANT_PORT": "6333",
-        "RAG_QDRANT_COLLECTION": "test_codebase",
-        "RAG_EMBEDDING_PROVIDER": "ollama",
-        "RAG_OLLAMA_BASE_URL": "http://localhost:11434",
-        "RAG_OLLAMA_EMBED_MODEL": "snowflake-arctic-embed:latest",
-        "RAG_WORKING_DIRECTORY": str(tmp_path),
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "RAG_QDRANT_MODE": "local",
+            "RAG_QDRANT_HOST": "localhost",
+            "RAG_QDRANT_PORT": "6333",
+            "RAG_QDRANT_COLLECTION": "test_codebase",
+            "RAG_EMBEDDING_PROVIDER": "ollama",
+            "RAG_OLLAMA_BASE_URL": "http://localhost:11434",
+            "RAG_OLLAMA_EMBED_MODEL": "snowflake-arctic-embed:latest",
+            "RAG_WORKING_DIRECTORY": str(tmp_path),
+        },
+    ):
         from config.settings import Settings
+
         yield Settings()
 
 

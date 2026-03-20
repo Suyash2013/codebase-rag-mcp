@@ -22,9 +22,7 @@ class OpenAIProvider(EmbeddingProvider):
 
     def __init__(self) -> None:
         if not settings.openai_api_key:
-            raise RuntimeError(
-                "OpenAI API key not configured. Set RAG_OPENAI_API_KEY."
-            )
+            raise RuntimeError("OpenAI API key not configured. Set RAG_OPENAI_API_KEY.")
 
     def embed(self, text: str) -> list[float]:
         resp = requests.post(

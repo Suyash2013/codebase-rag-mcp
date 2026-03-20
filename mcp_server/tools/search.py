@@ -2,7 +2,7 @@
 
 from config.settings import settings
 from mcp_server.embeddings import get_embedding
-from mcp_server.ingestion import ingest_directory, ingest_incremental, needs_ingestion
+from mcp_server.ingestion import ingest_directory, needs_ingestion
 from mcp_server.qdrant_client import search
 
 
@@ -60,9 +60,7 @@ def search_codebase(query: str, n_results: int = 0) -> str:
         return f"Error searching codebase: {exc}"
 
 
-def search_codebase_by_file(
-    query: str, file_pattern: str, n_results: int = 0
-) -> str:
+def search_codebase_by_file(query: str, file_pattern: str, n_results: int = 0) -> str:
     """Semantic search restricted to files matching a path pattern.
 
     Use when you know the general area of the codebase to search in.
@@ -90,15 +88,10 @@ def search_codebase_by_file(
             ingest_directory(directory)
 
         embedding = get_embedding(query)
-        hits = search(
-            embedding, n_results, directory_filter=directory, file_pattern=file_pattern
-        )
+        hits = search(embedding, n_results, directory_filter=directory, file_pattern=file_pattern)
 
         if not hits:
-            return (
-                f"No results matching file pattern '{file_pattern}' "
-                f'for query: "{query}"'
-            )
+            return f"No results matching file pattern '{file_pattern}' for query: \"{query}\""
 
         return _format_results(f"{query} [files: *{file_pattern}*]", hits)
 

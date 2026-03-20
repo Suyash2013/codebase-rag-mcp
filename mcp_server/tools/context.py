@@ -1,7 +1,5 @@
 """MCP tool for codebase context and overview."""
 
-import json
-
 from config.settings import settings
 from mcp_server.analysis.overview import generate_overview, load_cached_overview, save_overview
 
@@ -46,7 +44,9 @@ def _format_overview(overview: dict, cached: bool) -> str:
     if overview.get("languages"):
         parts.append("\n## Languages (by file count)")
         for lang in overview["languages"][:10]:
-            parts.append(f"  {lang['extension']:12s} {lang['files']:4d} files  {lang['lines']:6d} lines")
+            parts.append(
+                f"  {lang['extension']:12s} {lang['files']:4d} files  {lang['lines']:6d} lines"
+            )
 
     # Manifests
     if overview.get("manifests"):

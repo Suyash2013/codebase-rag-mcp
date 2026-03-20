@@ -1,10 +1,6 @@
 """Tests for codebase overview generation."""
 
-from pathlib import Path
-
-import pytest
-
-from mcp_server.analysis.overview import generate_overview, save_overview, load_cached_overview
+from mcp_server.analysis.overview import generate_overview, load_cached_overview, save_overview
 
 
 def test_generate_overview(tmp_codebase):
@@ -19,7 +15,7 @@ def test_generate_overview(tmp_codebase):
 def test_overview_detects_languages(tmp_codebase):
     """Should detect Python and JavaScript files."""
     overview = generate_overview(str(tmp_codebase))
-    extensions = [l["extension"] for l in overview["languages"]]
+    extensions = [line["extension"] for line in overview["languages"]]
     assert ".py" in extensions
 
 

@@ -5,9 +5,6 @@ import logging
 import os
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Optional
-
-from config.settings import settings
 
 log = logging.getLogger("codebase-rag-mcp")
 
@@ -35,12 +32,25 @@ _MANIFEST_FILES = {
 # Key file patterns that indicate project structure
 _KEY_FILE_PATTERNS = {
     "entry_points": [
-        "main.py", "app.py", "server.py", "index.js", "index.ts",
-        "main.go", "main.rs", "Main.java", "Main.kt",
+        "main.py",
+        "app.py",
+        "server.py",
+        "index.js",
+        "index.ts",
+        "main.go",
+        "main.rs",
+        "Main.java",
+        "Main.kt",
     ],
     "config": [
-        "pyproject.toml", "package.json", "tsconfig.json", "go.mod",
-        "Cargo.toml", ".env.example", "docker-compose.yml", "Dockerfile",
+        "pyproject.toml",
+        "package.json",
+        "tsconfig.json",
+        "go.mod",
+        "Cargo.toml",
+        ".env.example",
+        "docker-compose.yml",
+        "Dockerfile",
     ],
     "tests": ["conftest.py", "jest.config.js", "pytest.ini", "test_*.py"],
     "docs": ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "docs/"],
@@ -48,8 +58,18 @@ _KEY_FILE_PATTERNS = {
 }
 
 SKIP_DIRS = {
-    "node_modules", "__pycache__", "venv", ".venv", "dist", "build",
-    ".git", ".codebase-rag", ".idea", ".vscode", "target", ".gradle",
+    "node_modules",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "dist",
+    "build",
+    ".git",
+    ".codebase-rag",
+    ".idea",
+    ".vscode",
+    "target",
+    ".gradle",
 }
 
 
@@ -75,7 +95,11 @@ def _build_dir_tree(directory: str, max_depth: int = 3) -> list[str]:
         except PermissionError:
             return
 
-        dirs = [e for e in entries if e.is_dir() and e.name not in SKIP_DIRS and not e.name.startswith(".")]
+        dirs = [
+            e
+            for e in entries
+            if e.is_dir() and e.name not in SKIP_DIRS and not e.name.startswith(".")
+        ]
         files = [e for e in entries if e.is_file()]
 
         for d in dirs:
@@ -126,7 +150,7 @@ def _detect_dependencies(directory: str) -> dict:
     pkg_json = Path(directory) / "package.json"
     if pkg_json.exists():
         try:
-            with open(pkg_json, "r", encoding="utf-8") as f:
+            with open(pkg_json, encoding="utf-8") as f:
                 data = json.load(f)
             deps["node"] = {
                 "name": data.get("name", "unknown"),
@@ -143,8 +167,14 @@ def _detect_dependencies(directory: str) -> dict:
         try:
             text = go_mod.read_text(encoding="utf-8")
             lines = text.splitlines()
-            module = next((l.split()[1] for l in lines if l.startswith("module ")), "unknown")
-            requires = [l.strip().split()[0] for l in lines if l.strip() and not l.startswith(("module", "go ", ")", "require"))]
+            module = next(
+                (line.split()[1] for line in lines if line.startswith("module ")), "unknown"
+            )
+            requires = [
+                line.strip().split()[0]
+                for line in lines
+                if line.strip() and not line.startswith(("module", "go ", ")", "require"))
+            ]
             deps["go"] = {"module": module, "requires": requires[:20]}
         except Exception:
             pass
@@ -177,8 +207,8 @@ def generate_overview(directory: str) -> dict:
     base = Path(directory)
 
     # Language breakdown
-    ext_counts = Counter()
-    ext_lines = Counter()
+    ext_counts: Counter[str] = Counter()
+    ext_lines: Counter[str] = Counter()
     total_files = 0
 
     for root, dirs, files in os.walk(directory):
@@ -245,13 +275,13 @@ def save_overview(directory: str, overview: dict) -> str:
     return str(path)
 
 
-def load_cached_overview(directory: str) -> Optional[dict]:
+def load_cached_overview(directory: str) -> dict | None:
     """Load cached overview if it exists."""
     path = Path(directory) / ".codebase-rag" / "overview.json"
     if not path.exists():
         return None
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return None

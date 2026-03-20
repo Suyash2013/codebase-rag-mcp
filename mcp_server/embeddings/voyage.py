@@ -23,9 +23,7 @@ class VoyageProvider(EmbeddingProvider):
 
     def __init__(self) -> None:
         if not settings.voyage_api_key:
-            raise RuntimeError(
-                "Voyage API key not configured. Set RAG_VOYAGE_API_KEY."
-            )
+            raise RuntimeError("Voyage API key not configured. Set RAG_VOYAGE_API_KEY.")
 
     def embed(self, text: str) -> list[float]:
         resp = requests.post(

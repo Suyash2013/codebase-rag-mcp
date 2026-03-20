@@ -1,13 +1,11 @@
 """Tests for structural analysis (signatures and dependency graph)."""
 
-from pathlib import Path
-
 import pytest
 
 from mcp_server.analysis.structure import (
-    extract_signatures,
-    extract_imports,
     build_dependency_graph,
+    extract_imports,
+    extract_signatures,
 )
 
 
@@ -40,7 +38,7 @@ def simple_func(a, b):
 def js_file(tmp_path):
     """Create a sample JS file."""
     f = tmp_path / "app.js"
-    f.write_text('''
+    f.write_text("""
 import { Router } from 'express';
 const axios = require('axios');
 
@@ -57,7 +55,7 @@ export function handleRequest(req, res) {
 const processData = async (data, options) => {
     return data;
 };
-''')
+""")
     return str(f)
 
 

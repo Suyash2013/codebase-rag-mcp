@@ -15,15 +15,19 @@ def create_provider() -> EmbeddingProvider:
     match provider_name:
         case "onnx":
             from mcp_server.embeddings.onnx_local import OnnxLocalProvider
+
             return OnnxLocalProvider()
         case "ollama":
             from mcp_server.embeddings.ollama import OllamaProvider
+
             return OllamaProvider()
         case "openai":
             from mcp_server.embeddings.openai import OpenAIProvider
+
             return OpenAIProvider()
         case "voyage":
             from mcp_server.embeddings.voyage import VoyageProvider
+
             return VoyageProvider()
         case _:
             raise ValueError(

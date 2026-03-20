@@ -2,7 +2,6 @@
 
 import logging
 import os
-from typing import Optional
 
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import (
@@ -18,7 +17,7 @@ from config.settings import settings
 
 log = logging.getLogger("codebase-rag-mcp")
 
-_client: Optional[QdrantClient] = None
+_client: QdrantClient | None = None
 
 
 def get_client() -> QdrantClient:
@@ -50,11 +49,16 @@ def ensure_collection(vector_size: int) -> None:
         if existing_size != vector_size:
             log.warning(
                 "Vector dimension mismatch (existing=%d, new=%d). Recreating collection.",
-                existing_size, vector_size,
+                existing_size,
+                vector_size,
             )
             client.delete_collection(settings.qdrant_collection)
         else:
-            log.info("Collection '%s' already exists (vector_size=%d)", settings.qdrant_collection, vector_size)
+            log.info(
+                "Collection '%s' already exists (vector_size=%d)",
+                settings.qdrant_collection,
+                vector_size,
+            )
             return
 
     log.info(
@@ -109,7 +113,7 @@ def upsert_chunks(
                 "ingested_at": chunk["ingested_at"],
             },
         )
-        for chunk, embedding in zip(chunks, embeddings)
+        for chunk, embedding in zip(chunks, embeddings, strict=False)
     ]
 
     # Upsert in batches of 100
@@ -126,8 +130,8 @@ def upsert_chunks(
 def search(
     query_embedding: list[float],
     n_results: int,
-    directory_filter: Optional[str] = None,
-    file_pattern: Optional[str] = None,
+    directory_filter: str | None = None,
+    file_pattern: str | None = None,
 ) -> list[dict]:
     """Query Qdrant with optional directory and file pattern filters.
 
