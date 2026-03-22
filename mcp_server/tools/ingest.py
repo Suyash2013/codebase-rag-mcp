@@ -11,7 +11,11 @@ from mcp_server.ingestion import (
 )
 
 
-def ingest_current_directory(force: bool = False) -> str:
+def ingest_current_directory(
+    force: bool = False,
+    include_extensions: list[str] | None = None,
+    exclude_extensions: list[str] | None = None,
+) -> str:
     """Manually trigger indexing of the current working directory.
 
     The codebase auto-indexes on first search, so you rarely need this.
@@ -20,17 +24,24 @@ def ingest_current_directory(force: bool = False) -> str:
 
     Args:
         force: If True, full re-index. If False, incremental update.
+        include_extensions: Optional list of file extensions to include
+            (e.g. [".py", ".ts", "js"]). When provided, ONLY files with these
+            extensions are indexed; the default TEXT_EXTENSIONS allowlist is
+            replaced. Leading dots are optional.
+        exclude_extensions: Optional list of file extensions to exclude
+            (e.g. [".txt", ".md"]). Files with these extensions are skipped
+            even if they would otherwise be indexed. Leading dots are optional.
     """
     directory = settings.get_working_directory()
 
     try:
         if force:
-            return ingest_directory(directory)
+            return ingest_directory(directory, include_extensions, exclude_extensions)
 
         if needs_ingestion(directory):
-            return ingest_directory(directory)
+            return ingest_directory(directory, include_extensions, exclude_extensions)
 
-        return ingest_incremental(directory)
+        return ingest_incremental(directory, include_extensions, exclude_extensions)
 
     except Exception as exc:
         return f"Error during ingestion: {exc}"
