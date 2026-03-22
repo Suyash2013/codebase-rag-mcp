@@ -108,3 +108,82 @@ def test_empty_collection_search(memory_client):
         limit=5,
     )
     assert len(response.points) == 0
+
+
+# ---------------------------------------------------------------------------
+# delete_directory_points / delete_file_points
+# ---------------------------------------------------------------------------
+
+
+def test_delete_directory_points_returns_correct_count(populated_client):
+    """delete_directory_points should return exact count of deleted points."""
+    from unittest.mock import patch
+
+    from mcp_server.qdrant_client import delete_directory_points
+
+    # Patch get_client and settings to use our in-memory client and collection
+    with (
+        patch("mcp_server.qdrant_client.get_client", return_value=populated_client),
+        patch("mcp_server.qdrant_client.settings") as mock_settings,
+    ):
+        mock_settings.qdrant_collection = "test_codebase"
+
+        # /test/project has 2 points
+        count = delete_directory_points("/test/project")
+        assert count == 2
+
+        # Verify points were actually deleted
+        info = populated_client.get_collection("test_codebase")
+        assert info.points_count == 1  # only /other/project point remains
+
+
+def test_delete_directory_points_returns_zero_for_missing(populated_client):
+    """delete_directory_points should return 0 for non-existent directory."""
+    from unittest.mock import patch
+
+    from mcp_server.qdrant_client import delete_directory_points
+
+    with (
+        patch("mcp_server.qdrant_client.get_client", return_value=populated_client),
+        patch("mcp_server.qdrant_client.settings") as mock_settings,
+    ):
+        mock_settings.qdrant_collection = "test_codebase"
+
+        count = delete_directory_points("/nonexistent/dir")
+        assert count == 0
+
+
+def test_delete_file_points_returns_correct_count(populated_client):
+    """delete_file_points should return exact count of deleted points."""
+    from unittest.mock import patch
+
+    from mcp_server.qdrant_client import delete_file_points
+
+    with (
+        patch("mcp_server.qdrant_client.get_client", return_value=populated_client),
+        patch("mcp_server.qdrant_client.settings") as mock_settings,
+    ):
+        mock_settings.qdrant_collection = "test_codebase"
+
+        count = delete_file_points("main.py")
+        assert count == 1
+
+        # Verify the point was actually deleted
+        info = populated_client.get_collection("test_codebase")
+        assert info.points_count == 2  # 2 remaining
+
+
+def test_delete_file_points_returns_zero_for_missing(populated_client):
+    """delete_file_points should return 0 for non-existent file."""
+    from unittest.mock import patch
+
+    from mcp_server.qdrant_client import delete_file_points
+
+    with (
+        patch("mcp_server.qdrant_client.get_client", return_value=populated_client),
+        patch("mcp_server.qdrant_client.settings") as mock_settings,
+    ):
+        mock_settings.qdrant_collection = "test_codebase"
+
+        count = delete_file_points("nonexistent.py")
+        assert count == 0

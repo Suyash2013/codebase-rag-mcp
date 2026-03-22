@@ -49,3 +49,29 @@ def test_overview_detects_pyproject(tmp_codebase):
     overview = generate_overview(str(tmp_codebase))
     manifest_files = [m["file"] for m in overview.get("manifests", [])]
     assert "pyproject.toml" in manifest_files
+
+
+def test_detect_dependencies_pyproject(tmp_path):
+    """Should parse pyproject.toml and extract dependency list."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\n'
+        'name = "my-project"\n'
+        'version = "2.0.0"\n'
+        'requires-python = ">=3.10"\n'
+        'dependencies = [\n'
+        '    "requests>=2.31",\n'
+        '    "pydantic>=2.0",\n'
+        '    "click",\n'
+        ']\n'
+    )
+    overview = generate_overview(str(tmp_path))
+    deps = overview.get("dependencies", {})
+    assert "python" in deps
+    py_deps = deps["python"]
+    assert py_deps["name"] == "my-project"
+    assert py_deps["version"] == "2.0.0"
+    assert py_deps["python_requires"] == ">=3.10"
+    assert len(py_deps["dependencies"]) == 3
+    assert "requests>=2.31" in py_deps["dependencies"]
+    assert "pydantic>=2.0" in py_deps["dependencies"]
+    assert "click" in py_deps["dependencies"]
