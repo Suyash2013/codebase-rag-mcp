@@ -81,3 +81,18 @@ jobs:
         with:
           name: dist
           path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: [build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
