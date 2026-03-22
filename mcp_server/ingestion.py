@@ -135,23 +135,16 @@ def _is_text_file(
         # Explicit allowlist: special filenames pass through, others must match
         if path.name not in TEXT_FILENAMES and suffix not in include_extensions:
             return False
-        if exclude_extensions and suffix in exclude_extensions:
-            return False
-        return True
+        return not (exclude_extensions and suffix in exclude_extensions)
 
     # Default behaviour: must be a known text extension or special filename
     if path.name in TEXT_FILENAMES:
-        if exclude_extensions and suffix in exclude_extensions:
-            return False
-        return True
+        return not (exclude_extensions and suffix in exclude_extensions)
 
     if suffix not in TEXT_EXTENSIONS:
         return False
 
-    if exclude_extensions and suffix in exclude_extensions:
-        return False
-
-    return True
+    return not (exclude_extensions and suffix in exclude_extensions)
 
 
 def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
