@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from mcp_server.ingestion import (
+    TEXT_FILENAMES,
     _chunk_text,
     _collect_text_files,
     _is_text_file,
@@ -143,7 +144,9 @@ def test_collect_text_files_include_extensions(tmp_codebase):
     """Only files with the specified extensions are collected."""
     files = _collect_text_files(str(tmp_codebase), include_extensions={".py"})
     rel_paths = [rel for _, rel in files]
-    assert all(p.endswith(".py") for p in rel_paths), rel_paths
+    # Special filenames (e.g. .gitignore) bypass include_extensions by design
+    non_special = [p for p in rel_paths if not any(p.endswith(n) for n in TEXT_FILENAMES)]
+    assert all(p.endswith(".py") for p in non_special), rel_paths
     assert any("main.py" in p for p in rel_paths)
     # JS and YAML should be excluded
     assert not any(p.endswith(".js") for p in rel_paths)
