@@ -75,7 +75,7 @@ jobs:
   test:
     name: Test (Python ${{ matrix.python-version }})
     needs: [lint, typecheck, claude-review]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.lint.result == 'success' && needs.typecheck.result == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
