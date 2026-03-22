@@ -130,9 +130,23 @@ def test_is_text_file_exclude_does_not_block_other():
 def test_is_text_file_include_and_exclude():
     """include_extensions takes priority; exclude_extensions further restricts."""
     # .py in include but not in exclude → accepted
-    assert _is_text_file(Path("a.py"), include_extensions={".py", ".md"}, exclude_extensions={".md"}) is True
+    assert (
+        _is_text_file(
+            Path("a.py"),
+            include_extensions={".py", ".md"},
+            exclude_extensions={".md"},
+        )
+        is True
+    )
     # .md in include AND in exclude → rejected
-    assert _is_text_file(Path("README.md"), include_extensions={".py", ".md"}, exclude_extensions={".md"}) is False
+    assert (
+        _is_text_file(
+            Path("README.md"),
+            include_extensions={".py", ".md"},
+            exclude_extensions={".md"},
+        )
+        is False
+    )
 
 
 # ---------------------------------------------------------------------------
