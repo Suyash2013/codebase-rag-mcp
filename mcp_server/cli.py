@@ -107,13 +107,11 @@ def _find_claude_config() -> Path | None:
 
 def _print_manual_config(command: str, is_direct: bool):
     """Print manual configuration instructions."""
-    server_config: dict[str, object] = {"command": command}
-    if not is_direct:
-        server_config["args"] = ["-m", "mcp_server.server"]
+    if is_direct:
+        server_config: dict[str, object] = {"command": "codebase-rag"}
     else:
-        server_config["command"] = "codebase-rag"
+        server_config = {"command": command, "args": ["-m", "mcp_server.server"]}
     config = {"mcpServers": {"codebase-rag": server_config}}
-
     print(json.dumps(config, indent=2))
 
 

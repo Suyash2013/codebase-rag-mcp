@@ -15,3 +15,8 @@ dist/
 .vscode/
 .claude/
 .coverage
+.worktrees/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.mcp.json

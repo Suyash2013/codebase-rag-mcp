@@ -15,6 +15,7 @@ from config.settings import settings
 from mcp_server.embeddings import get_embedding, get_embedding_dimension
 from mcp_server.qdrant_client import (
     delete_directory_points,
+    delete_file_points,
     ensure_collection,
     is_directory_indexed,
     upsert_chunks,
@@ -153,16 +154,15 @@ def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
         return [text] if text.strip() else []
 
     separators = ["\n\n", "\n", " ", ""]
-    chunks = []
 
-    def _split(text: str, separators: list[str]) -> list[str]:
+    def _split(text: str, seps: list[str]) -> list[str]:
         if not text.strip():
             return []
         if len(text) <= chunk_size:
             return [text]
 
-        sep = separators[0] if separators else ""
-        remaining_seps = separators[1:] if len(separators) > 1 else [""]
+        sep = seps[0] if seps else ""
+        remaining = seps[1:] if len(seps) > 1 else [""]
 
         if sep == "":
             # Base case: hard split
@@ -175,6 +175,7 @@ def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
 
         parts = text.split(sep)
         current_chunk = ""
+        result = []
 
         for part in parts:
             candidate = current_chunk + sep + part if current_chunk else part
@@ -182,19 +183,18 @@ def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
                 current_chunk = candidate
             else:
                 if current_chunk.strip():
-                    chunks.append(current_chunk)
+                    result.append(current_chunk)
                 if len(part) > chunk_size:
-                    chunks.extend(_split(part, remaining_seps))
+                    result.extend(_split(part, remaining))
                     current_chunk = ""
                 else:
                     current_chunk = part
 
         if current_chunk.strip():
-            chunks.append(current_chunk)
+            result.append(current_chunk)
+        return result
 
-        return []
-
-    _split(text, separators)
+    chunks = _split(text, separators)
 
     # Apply overlap by including trailing context from previous chunk
     if chunk_overlap > 0 and len(chunks) > 1:
@@ -538,8 +538,9 @@ def ingest_incremental(
     if not files_to_ingest:
         return f"No indexable changes found in {directory}"
 
-    # TODO: Delete old chunks for changed files before re-inserting
-    # For now, we just add new chunks (some duplication possible)
+    # Delete old chunks for changed files before re-inserting
+    for _filepath, rel_path in files_to_ingest:
+        delete_file_points(rel_path)
 
     all_chunks, all_embeddings = _embed_and_chunk_files(
         files_to_ingest, directory, timeout_seconds, start_time

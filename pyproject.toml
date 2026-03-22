@@ -40,6 +40,9 @@ check_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+markers = [
+    "integration: end-to-end tests requiring ONNX embeddings and in-memory Qdrant",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["mcp_server", "config"]

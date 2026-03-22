@@ -53,9 +53,29 @@ jobs:
       - run: pip install -e .
       - run: pip-audit
 
+  claude-review:
+    name: Claude Code Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            Review this PR for correctness, security, type safety, and testing.
+            Focus on substance, not style (ruff handles that).
+
   test:
     name: Test (Python ${{ matrix.python-version }})
-    needs: [lint, typecheck]
+    needs: [lint, typecheck, claude-review]
+    if: ${{ !cancelled() && needs.lint.result == 'success' && needs.typecheck.result == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
