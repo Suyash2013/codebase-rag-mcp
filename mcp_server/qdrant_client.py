@@ -217,21 +217,44 @@ def get_stats() -> dict:
 def delete_directory_points(directory: str) -> int:
     """Delete all points belonging to a directory. Returns count deleted."""
     client = get_client()
-    # Get count before deletion
-    points, _ = client.scroll(
-        collection_name=settings.qdrant_collection,
-        scroll_filter=Filter(
-            must=[FieldCondition(key="directory", match=MatchValue(value=directory))]
-        ),
-        limit=1,
+    dir_filter = Filter(
+        must=[FieldCondition(key="directory", match=MatchValue(value=directory))]
     )
-    if not points:
+    # Get accurate count before deletion
+    count_result = client.count(
+        collection_name=settings.qdrant_collection,
+        count_filter=dir_filter,
+        exact=True,
+    )
+    count = count_result.count
+    if count == 0:
         return 0
 
     client.delete(
         collection_name=settings.qdrant_collection,
-        points_selector=Filter(
-            must=[FieldCondition(key="directory", match=MatchValue(value=directory))]
-        ),
+        points_selector=dir_filter,
     )
-    return -1  # Qdrant doesn't return count; caller can re-check if needed
+    return count
+
+
+def delete_file_points(file_path: str) -> int:
+    """Delete all points belonging to a specific file. Returns count deleted."""
+    client = get_client()
+    file_filter = Filter(
+        must=[FieldCondition(key="file_path", match=MatchValue(value=file_path))]
+    )
+    # Get accurate count before deletion
+    count_result = client.count(
+        collection_name=settings.qdrant_collection,
+        count_filter=file_filter,
+        exact=True,
+    )
+    count = count_result.count
+    if count == 0:
+        return 0
+
+    client.delete(
+        collection_name=settings.qdrant_collection,
+        points_selector=file_filter,
+    )
+    return count
