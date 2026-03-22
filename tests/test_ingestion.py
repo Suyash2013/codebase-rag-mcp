@@ -226,22 +226,15 @@ def test_chunk_text_overlap_contains_previous_trailing_content():
     """Verify overlaps contain correct trailing content from the previous chunk."""
     # Create text that will definitely split into multiple chunks
     para1 = "ALPHA " * 30  # ~180 chars
-    para2 = "BETA " * 30   # ~150 chars
+    para2 = "BETA " * 30  # ~150 chars
     para3 = "GAMMA " * 30  # ~180 chars
     text = f"{para1}\n\n{para2}\n\n{para3}"
 
     chunks = _chunk_text(text, chunk_size=200, chunk_overlap=50)
     assert len(chunks) > 1
 
-    # Each subsequent chunk (index > 0) should start with content from end of prior chunk
+    # Each subsequent chunk (index > 0) should be non-empty
     for i in range(1, len(chunks)):
-        prev_tail = chunks[0][-50:] if i == 1 else None
-        # The overlap means the chunk should contain some characters from the
-        # previous chunk's end — we just verify the chunk is longer than it
-        # would be without overlap, i.e. the overlap was prepended
-        # More specifically: chunk[i] should start with the last `overlap` chars of
-        # the non-overlapped version. Since we can't easily get non-overlapped,
-        # just verify chunks are non-empty and have reasonable sizes.
         assert len(chunks[i]) > 0
 
 

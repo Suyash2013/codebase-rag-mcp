@@ -217,9 +217,7 @@ def get_stats() -> dict:
 def delete_directory_points(directory: str) -> int:
     """Delete all points belonging to a directory. Returns count deleted."""
     client = get_client()
-    dir_filter = Filter(
-        must=[FieldCondition(key="directory", match=MatchValue(value=directory))]
-    )
+    dir_filter = Filter(must=[FieldCondition(key="directory", match=MatchValue(value=directory))])
     # Get accurate count before deletion
     count_result = client.count(
         collection_name=settings.qdrant_collection,
@@ -240,9 +238,7 @@ def delete_directory_points(directory: str) -> int:
 def delete_file_points(file_path: str) -> int:
     """Delete all points belonging to a specific file. Returns count deleted."""
     client = get_client()
-    file_filter = Filter(
-        must=[FieldCondition(key="file_path", match=MatchValue(value=file_path))]
-    )
+    file_filter = Filter(must=[FieldCondition(key="file_path", match=MatchValue(value=file_path))])
     # Get accurate count before deletion
     count_result = client.count(
         collection_name=settings.qdrant_collection,

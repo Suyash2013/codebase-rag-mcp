@@ -12,7 +12,6 @@ from unittest.mock import patch
 
 import pytest
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
 
 
 def _deterministic_embedding(text: str, dim: int = 384) -> list[float]:
@@ -91,7 +90,7 @@ class TestIntegrationPipeline:
 
     def test_ingest_and_search(self):
         """Ingest a small codebase and verify search returns results."""
-        test_settings, patches = self._create_patches()
+        _test_settings, patches = self._create_patches()
         try:
             from mcp_server.ingestion import _chunk_text, _collect_text_files
             from mcp_server.qdrant_client import ensure_collection, search, upsert_chunks
@@ -149,7 +148,7 @@ class TestIntegrationPipeline:
 
     def test_search_with_file_pattern(self):
         """Search with file_pattern should only return matching files."""
-        test_settings, patches = self._create_patches()
+        _test_settings, patches = self._create_patches()
         try:
             from mcp_server.ingestion import _chunk_text, _collect_text_files
             from mcp_server.qdrant_client import ensure_collection, search, upsert_chunks
@@ -208,7 +207,7 @@ class TestIntegrationPipeline:
 
     def test_delete_and_recount(self):
         """After deleting directory points, count should decrease."""
-        test_settings, patches = self._create_patches()
+        _test_settings, patches = self._create_patches()
         try:
             from mcp_server.ingestion import _chunk_text, _collect_text_files
             from mcp_server.qdrant_client import (

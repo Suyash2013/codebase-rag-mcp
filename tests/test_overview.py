@@ -54,15 +54,15 @@ def test_overview_detects_pyproject(tmp_codebase):
 def test_detect_dependencies_pyproject(tmp_path):
     """Should parse pyproject.toml and extract dependency list."""
     (tmp_path / "pyproject.toml").write_text(
-        '[project]\n'
+        "[project]\n"
         'name = "my-project"\n'
         'version = "2.0.0"\n'
         'requires-python = ">=3.10"\n'
-        'dependencies = [\n'
+        "dependencies = [\n"
         '    "requests>=2.31",\n'
         '    "pydantic>=2.0",\n'
         '    "click",\n'
-        ']\n'
+        "]\n"
     )
     overview = generate_overview(str(tmp_path))
     deps = overview.get("dependencies", {})

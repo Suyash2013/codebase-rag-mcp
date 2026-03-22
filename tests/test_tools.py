@@ -1,8 +1,7 @@
 """Unit tests for MCP tool functions in mcp_server/tools/."""
 
 import json
-from unittest.mock import MagicMock, patch
-
+from unittest.mock import patch
 
 # ---------------------------------------------------------------------------
 # search_codebase
@@ -79,7 +78,9 @@ def test_search_codebase_handles_exception():
     """search_codebase should return error string on exception."""
     with (
         patch("mcp_server.tools.search.settings") as mock_settings,
-        patch("mcp_server.tools.search.needs_ingestion", side_effect=RuntimeError("connection failed")),
+        patch(
+            "mcp_server.tools.search.needs_ingestion", side_effect=RuntimeError("connection failed")
+        ),
     ):
         mock_settings.default_n_results = 10
         mock_settings.max_n_results = 20
@@ -207,7 +208,9 @@ def test_get_codebase_context_handles_error():
     """get_codebase_context should return error string on exception."""
     with (
         patch("mcp_server.tools.context.settings") as mock_settings,
-        patch("mcp_server.tools.context.load_cached_overview", side_effect=RuntimeError("disk full")),
+        patch(
+            "mcp_server.tools.context.load_cached_overview", side_effect=RuntimeError("disk full")
+        ),
     ):
         mock_settings.get_working_directory.return_value = "/proj"
 
@@ -226,8 +229,7 @@ def test_get_codebase_context_handles_error():
 def test_get_file_signatures_with_python_files(tmp_path):
     """get_file_signatures should extract signatures from real Python files."""
     (tmp_path / "module.py").write_text(
-        "def greet(name: str) -> str:\n    return f'Hello {name}'\n\n"
-        "class Greeter:\n    pass\n"
+        "def greet(name: str) -> str:\n    return f'Hello {name}'\n\nclass Greeter:\n    pass\n"
     )
 
     with patch("mcp_server.tools.structure.settings") as mock_settings:
