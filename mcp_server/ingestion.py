@@ -114,11 +114,37 @@ def _load_gitignore(directory: str) -> pathspec.PathSpec | None:
         return pathspec.PathSpec.from_lines("gitignore", f)
 
 
-def _is_text_file(path: Path) -> bool:
-    """Check if a file is likely a text file based on extension or name."""
+def _is_text_file(
+    path: Path,
+    include_extensions: set[str] | None = None,
+    exclude_extensions: set[str] | None = None,
+) -> bool:
+    """Check if a file is likely a text file based on extension or name.
+
+    Args:
+        path: Path to the file.
+        include_extensions: If provided, only files with these extensions are accepted.
+            Extensions should include the leading dot (e.g. {".py", ".js"}).
+            Special filenames (e.g. "Dockerfile") are still accepted regardless.
+        exclude_extensions: If provided, files with these extensions are rejected.
+            Applied after include_extensions check.
+    """
+    suffix = path.suffix.lower()
+
+    if include_extensions is not None:
+        # Explicit allowlist: special filenames pass through, others must match
+        if path.name not in TEXT_FILENAMES and suffix not in include_extensions:
+            return False
+        return not (exclude_extensions and suffix in exclude_extensions)
+
+    # Default behaviour: must be a known text extension or special filename
     if path.name in TEXT_FILENAMES:
-        return True
-    return path.suffix.lower() in TEXT_EXTENSIONS
+        return not (exclude_extensions and suffix in exclude_extensions)
+
+    if suffix not in TEXT_EXTENSIONS:
+        return False
+
+    return not (exclude_extensions and suffix in exclude_extensions)
 
 
 def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
@@ -294,8 +320,20 @@ def get_changed_files(directory: str) -> list[str]:
     return list(changed)
 
 
-def _collect_text_files(directory: str) -> list[tuple[Path, str]]:
-    """Walk directory and collect text files, respecting .gitignore."""
+def _collect_text_files(
+    directory: str,
+    include_extensions: set[str] | None = None,
+    exclude_extensions: set[str] | None = None,
+) -> list[tuple[Path, str]]:
+    """Walk directory and collect text files, respecting .gitignore.
+
+    Args:
+        directory: Root directory to walk.
+        include_extensions: Normalised set of extensions to include (e.g. {".py"}).
+            When provided, only files with these extensions are ingested.
+        exclude_extensions: Normalised set of extensions to exclude (e.g. {".txt"}).
+            Applied on top of the default TEXT_EXTENSIONS allowlist.
+    """
     gitignore = _load_gitignore(directory)
     files = []
     base_path = Path(directory)
@@ -310,7 +348,7 @@ def _collect_text_files(directory: str) -> list[tuple[Path, str]]:
 
             if gitignore and gitignore.match_file(rel_path):
                 continue
-            if not _is_text_file(filepath):
+            if not _is_text_file(filepath, include_extensions, exclude_extensions):
                 continue
             if filepath.stat().st_size > 1_000_000:
                 log.info("Skipping large file: %s", rel_path)
@@ -364,17 +402,42 @@ def _embed_and_chunk_files(
     return all_chunks, all_embeddings
 
 
-def ingest_directory(directory: str) -> str:
+def _normalise_extensions(extensions: list[str] | None) -> set[str] | None:
+    """Normalise a list of extension strings to a lowercase set with leading dots.
+
+    Accepts extensions with or without leading dot (e.g. "py" or ".py").
+    Returns None if the input list is None or empty.
+    """
+    if not extensions:
+        return None
+    return {(ext if ext.startswith(".") else f".{ext}").lower() for ext in extensions}
+
+
+def ingest_directory(
+    directory: str,
+    include_extensions: list[str] | None = None,
+    exclude_extensions: list[str] | None = None,
+) -> str:
     """Walk directory, chunk files, embed, store in Qdrant.
 
     Respects .gitignore, skips binary files, uses recursive character splitting.
     Returns a status message.
+
+    Args:
+        directory: Root directory to ingest.
+        include_extensions: If provided, only files with these extensions are
+            ingested (e.g. [".py", ".ts"]). Overrides the default TEXT_EXTENSIONS.
+        exclude_extensions: If provided, files with these extensions are skipped
+            (e.g. [".txt", ".md"]).
     """
     timeout_seconds = settings.ingestion_timeout_hours * 3600
     start_time = time.time()
 
     directory = os.path.abspath(directory)
     log.info("Starting ingestion of %s (timeout: %dh)", directory, settings.ingestion_timeout_hours)
+
+    inc_exts = _normalise_extensions(include_extensions)
+    exc_exts = _normalise_extensions(exclude_extensions)
 
     # Ensure Qdrant collection exists
     vector_size = get_embedding_dimension()
@@ -383,7 +446,7 @@ def ingest_directory(directory: str) -> str:
     # Delete existing points for this directory (re-ingest cleanly)
     delete_directory_points(directory)
 
-    files_to_ingest = _collect_text_files(directory)
+    files_to_ingest = _collect_text_files(directory, inc_exts, exc_exts)
 
     if not files_to_ingest:
         return f"No text files found to ingest in {directory}"
@@ -413,18 +476,29 @@ def ingest_directory(directory: str) -> str:
     return msg
 
 
-def ingest_incremental(directory: str) -> str:
+def ingest_incremental(
+    directory: str,
+    include_extensions: list[str] | None = None,
+    exclude_extensions: list[str] | None = None,
+) -> str:
     """Incrementally update the index with only changed files.
 
     Uses git diff to detect changes since last ingestion. Only re-embeds
     changed files. Falls back to full ingestion if no prior commit marker.
+
+    Args:
+        directory: Root directory to ingest.
+        include_extensions: If provided, only files with these extensions are
+            ingested (e.g. [".py", ".ts"]). Overrides the default TEXT_EXTENSIONS.
+        exclude_extensions: If provided, files with these extensions are skipped
+            (e.g. [".txt", ".md"]).
     """
     directory = os.path.abspath(directory)
     last_commit = _get_last_indexed_commit(directory)
 
     if not last_commit:
         log.info("No prior ingestion marker — doing full ingestion")
-        return ingest_directory(directory)
+        return ingest_directory(directory, include_extensions, exclude_extensions)
 
     changed_files = get_changed_files(directory)
     if not changed_files:
@@ -434,6 +508,9 @@ def ingest_incremental(directory: str) -> str:
     start_time = time.time()
 
     log.info("Incremental ingestion: %d changed files in %s", len(changed_files), directory)
+
+    inc_exts = _normalise_extensions(include_extensions)
+    exc_exts = _normalise_extensions(exclude_extensions)
 
     # Ensure collection exists
     vector_size = get_embedding_dimension()
@@ -452,7 +529,7 @@ def ingest_incremental(directory: str) -> str:
             continue
         if gitignore and gitignore.match_file(rel_path):
             continue
-        if not _is_text_file(filepath):
+        if not _is_text_file(filepath, inc_exts, exc_exts):
             continue
         if filepath.stat().st_size > 1_000_000:
             continue
