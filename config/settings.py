@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     qdrant_collection: str = "codebase"
 
     # Embedding provider
-    embedding_provider: str = "onnx"  # "onnx" | "ollama" | "openai" | "voyage"
+    embedding_provider: str = "onnx"  # "onnx" | "ollama" | "openai" | "voyage" | "nomic" | "snowflake"
 
     # ONNX local embeddings (default, zero-config)
     onnx_model_name: str = "all-MiniLM-L6-v2"
@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     # Ollama embeddings
     ollama_base_url: str = "http://localhost:11434"
     ollama_embed_model: str = "snowflake-arctic-embed:latest"
+
+    # Nomic embeddings (via Ollama, auto-pulled if missing)
+    nomic_model: str = "nomic-embed-text:latest"
+
+    # Snowflake embeddings (via Ollama, auto-pulled if missing)
+    snowflake_model: str = "snowflake-arctic-embed:latest"
 
     # OpenAI embeddings
     openai_api_key: str = ""

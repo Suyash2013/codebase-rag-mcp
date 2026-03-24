@@ -29,8 +29,16 @@ def create_provider() -> EmbeddingProvider:
             from mcp_server.embeddings.voyage import VoyageProvider
 
             return VoyageProvider()
+        case "nomic":
+            from mcp_server.embeddings.nomic import NomicProvider
+
+            return NomicProvider()
+        case "snowflake":
+            from mcp_server.embeddings.snowflake import SnowflakeProvider
+
+            return SnowflakeProvider()
         case _:
             raise ValueError(
                 f"Unknown embedding provider '{provider_name}'. "
-                f"Choose from: onnx, ollama, openai, voyage"
+                f"Choose from: onnx, ollama, openai, voyage, nomic, snowflake"
             )
