@@ -171,11 +171,10 @@ def test_ollama_no_pull_when_model_present():
             }
             tags_response.raise_for_status = MagicMock()
 
-            with patch.object(requests, "get", return_value=tags_response) as mock_get:
-                with patch.object(requests, "post") as mock_post:
-                    OllamaProvider(model="nomic-embed-text:latest", auto_pull=True)
-                    mock_get.assert_called_once()
-                    mock_post.assert_not_called()
+            with patch.object(requests, "get", return_value=tags_response) as mock_get, patch.object(requests, "post") as mock_post:
+                OllamaProvider(model="nomic-embed-text:latest", auto_pull=True)
+                mock_get.assert_called_once()
+                mock_post.assert_not_called()
 
 
 def test_factory_unknown_provider():
