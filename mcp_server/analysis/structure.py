@@ -37,7 +37,8 @@ def extract_signatures(file_path: str) -> list[dict]:
 
     try:
         text = path.read_text(encoding="utf-8", errors="ignore")
-    except Exception:
+    except Exception as e:
+        log.warning("Failed to read file for signature extraction %s: %s", file_path, e)
         return []
 
     if path.suffix == ".py":
@@ -276,7 +277,8 @@ def extract_imports(file_path: str) -> list[str]:
 
     try:
         text = path.read_text(encoding="utf-8", errors="ignore")
-    except Exception:
+    except Exception as e:
+        log.warning("Failed to read file for import extraction %s: %s", file_path, e)
         return []
 
     if path.suffix == ".py":

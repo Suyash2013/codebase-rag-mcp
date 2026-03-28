@@ -78,7 +78,8 @@ def _count_lines(filepath: Path) -> int:
     try:
         with open(filepath, "rb") as f:
             return sum(1 for _ in f)
-    except Exception:
+    except Exception as e:
+        log.warning("Failed to count lines in %s: %s", filepath, e)
         return 0
 
 
@@ -143,8 +144,8 @@ def _detect_dependencies(directory: str) -> dict:
                     "dependencies": project.get("dependencies", []),
                     "python_requires": project.get("requires-python", ""),
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning("Failed to parse pyproject.toml in %s: %s", directory, e)
 
     # package.json
     pkg_json = Path(directory) / "package.json"
@@ -158,8 +159,8 @@ def _detect_dependencies(directory: str) -> dict:
                 "dependencies": list(data.get("dependencies", {}).keys()),
                 "devDependencies": list(data.get("devDependencies", {}).keys()),
             }
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("Failed to parse package.json in %s: %s", directory, e)
 
     # go.mod
     go_mod = Path(directory) / "go.mod"
@@ -176,8 +177,8 @@ def _detect_dependencies(directory: str) -> dict:
                 if line.strip() and not line.startswith(("module", "go ", ")", "require"))
             ]
             deps["go"] = {"module": module, "requires": requires[:20]}
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("Failed to parse go.mod in %s: %s", directory, e)
 
     # Cargo.toml
     cargo = Path(directory) / "Cargo.toml"
@@ -192,8 +193,8 @@ def _detect_dependencies(directory: str) -> dict:
                     "version": package.get("version", "unknown"),
                     "dependencies": list(data.get("dependencies", {}).keys()),
                 }
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("Failed to parse Cargo.toml in %s: %s", directory, e)
 
     return deps
 
@@ -283,5 +284,6 @@ def load_cached_overview(directory: str) -> dict | None:
     try:
         with open(path, encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except Exception as e:
+        log.warning("Failed to load cached overview from %s: %s", path, e)
         return None
