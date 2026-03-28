@@ -94,6 +94,22 @@ def test_search_with_filter(populated_client):
         assert r.payload["directory"] == "/test/project"
 
 
+def test_search_with_file_pattern_filter(populated_client):
+    """Search with MatchText file_pattern filter should restrict to matching file paths."""
+    from qdrant_client.http.models import FieldCondition, Filter, MatchText
+
+    response = populated_client.query_points(
+        collection_name="test_codebase",
+        query=[0.1, 0.2, 0.3, 0.4],
+        query_filter=Filter(
+            must=[FieldCondition(key="file_path", match=MatchText(text=".py"))]
+        ),
+        limit=10,
+    )
+    assert len(response.points) == 1
+    assert response.points[0].payload["file_path"] == "main.py"
+
+
 def test_collection_stats(populated_client):
     """Stats should report correct point count."""
     info = populated_client.get_collection("test_codebase")

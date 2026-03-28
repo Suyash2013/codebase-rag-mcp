@@ -8,6 +8,7 @@ from qdrant_client.http.models import (
     Distance,
     FieldCondition,
     Filter,
+    MatchText,
     MatchValue,
     PointStruct,
     VectorParams,
@@ -145,26 +146,24 @@ def search(
         must_conditions.append(
             FieldCondition(key="directory", match=MatchValue(value=directory_filter))
         )
+    if file_pattern:
+        must_conditions.append(
+            FieldCondition(key="file_path", match=MatchText(text=file_pattern))
+        )
 
     query_filter = Filter(must=must_conditions) if must_conditions else None  # type: ignore[arg-type]
-
-    # If file_pattern is set, fetch extra results and filter client-side
-    fetch_n = n_results * 5 if file_pattern else n_results
 
     response = client.query_points(
         collection_name=settings.qdrant_collection,
         query=query_embedding,
         query_filter=query_filter,
-        limit=fetch_n,
+        limit=n_results,
     )
 
     hits = []
     for point in response.points:
         payload = point.payload or {}
         file_path = payload.get("file_path", "unknown")
-
-        if file_pattern and file_pattern.lower() not in file_path.lower():
-            continue
 
         hits.append(
             {
@@ -174,9 +173,6 @@ def search(
                 "directory": payload.get("directory", ""),
             }
         )
-
-        if len(hits) >= n_results:
-            break
 
     return hits
 
