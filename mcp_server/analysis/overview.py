@@ -7,6 +7,8 @@ import subprocess
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from config.settings import settings
+
 log = logging.getLogger("codebase-rag-mcp")
 
 # Known project manifest files and what they indicate
@@ -58,29 +60,18 @@ _KEY_FILE_PATTERNS = {
     "ci_cd": [".github/workflows/", ".gitlab-ci.yml", "Jenkinsfile"],
 }
 
-SKIP_DIRS = {
-    "node_modules",
-    "__pycache__",
-    "venv",
-    ".venv",
-    "dist",
-    "build",
-    ".git",
-    ".codebase-rag",
-    ".idea",
-    ".vscode",
-    "target",
-    ".gradle",
-}
+# Directories to skip — driven by settings.skip_directories
 
 
-def _count_lines(filepath: Path) -> int:
+def _count_lines(filepath: Path, errors: list | None = None) -> int:
     """Count lines in a file (fast, no encoding errors)."""
     try:
         with open(filepath, "rb") as f:
             return sum(1 for _ in f)
     except Exception as e:
         log.warning("Failed to count lines in %s: %s", filepath, e)
+        if errors is not None:
+            errors.append(1)
         return 0
 
 
@@ -97,10 +88,11 @@ def _build_dir_tree(directory: str, max_depth: int = 3) -> list[str]:
         except PermissionError:
             return
 
+        skip_dirs = set(settings.skip_directories)
         dirs = [
             e
             for e in entries
-            if e.is_dir() and e.name not in SKIP_DIRS and not e.name.startswith(".")
+            if e.is_dir() and e.name not in skip_dirs and not e.name.startswith(".")
         ]
         files = [e for e in entries if e.is_file()]
 
@@ -119,7 +111,7 @@ def _build_dir_tree(directory: str, max_depth: int = 3) -> list[str]:
     return tree
 
 
-def _detect_dependencies(directory: str) -> dict:
+def _detect_dependencies(directory: str, errors: list | None = None) -> dict:
     """Parse manifest files to extract dependency information."""
     deps = {}
 
@@ -147,6 +139,8 @@ def _detect_dependencies(directory: str) -> dict:
                 }
             except Exception as e:
                 log.warning("Failed to parse pyproject.toml in %s: %s", directory, e)
+                if errors is not None:
+                    errors.append(1)
 
     # package.json
     pkg_json = Path(directory) / "package.json"
@@ -162,6 +156,8 @@ def _detect_dependencies(directory: str) -> dict:
             }
         except Exception as e:
             log.warning("Failed to parse package.json in %s: %s", directory, e)
+            if errors is not None:
+                errors.append(1)
 
     # go.mod
     go_mod = Path(directory) / "go.mod"
@@ -180,6 +176,8 @@ def _detect_dependencies(directory: str) -> dict:
             deps["go"] = {"module": module, "requires": requires[:20]}
         except Exception as e:
             log.warning("Failed to parse go.mod in %s: %s", directory, e)
+            if errors is not None:
+                errors.append(1)
 
     # Cargo.toml
     cargo = Path(directory) / "Cargo.toml"
@@ -196,6 +194,8 @@ def _detect_dependencies(directory: str) -> dict:
                 }
         except Exception as e:
             log.warning("Failed to parse Cargo.toml in %s: %s", directory, e)
+            if errors is not None:
+                errors.append(1)
 
     return deps
 
@@ -208,18 +208,21 @@ def generate_overview(directory: str) -> dict:
     directory = os.path.abspath(directory)
     base = Path(directory)
 
+    errors: list = []
+
     # Language breakdown
     ext_counts: Counter[str] = Counter()
     ext_lines: Counter[str] = Counter()
     total_files = 0
 
+    skip_dirs = set(settings.skip_directories)
     for root, dirs, files in os.walk(directory):
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+        dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith(".")]
         for f in files:
             fp = Path(root) / f
             ext = fp.suffix.lower() or f"({fp.name})"
             ext_counts[ext] += 1
-            ext_lines[ext] += _count_lines(fp)
+            ext_lines[ext] += _count_lines(fp, errors)
             total_files += 1
 
     # Top languages by file count
@@ -252,7 +255,7 @@ def generate_overview(directory: str) -> dict:
             manifests.append({"file": filename, "language": lang})
 
     # Dependencies
-    dependencies = _detect_dependencies(directory)
+    dependencies = _detect_dependencies(directory, errors)
 
     overview = {
         "directory": directory,
@@ -263,6 +266,10 @@ def generate_overview(directory: str) -> dict:
         "dependencies": dependencies,
         "structure": tree[:100],  # Cap tree at 100 lines
     }
+
+    error_count = len(errors)
+    if error_count > 0:
+        log.info("Overview generated with %d warnings", error_count)
 
     return overview
 

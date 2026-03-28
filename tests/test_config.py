@@ -22,6 +22,13 @@ def test_default_settings():
         assert s.chunk_overlap == 200
         assert s.default_n_results == 10
         assert s.max_n_results == 20
+        assert s.max_file_size_bytes == 1_048_576
+        assert "node_modules" in s.skip_directories
+        assert "__pycache__" in s.skip_directories
+        assert ".git" in s.skip_directories
+        assert ".py" in s.text_extensions
+        assert ".js" in s.text_extensions
+        assert ".md" in s.text_extensions
 
 
 def test_settings_from_env():

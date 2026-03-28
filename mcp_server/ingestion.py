@@ -23,61 +23,6 @@ from mcp_server.qdrant_client import (
 
 log = logging.getLogger("codebase-rag-mcp")
 
-# File extensions considered as text (code, config, docs)
-TEXT_EXTENSIONS = {
-    ".py",
-    ".js",
-    ".ts",
-    ".tsx",
-    ".jsx",
-    ".java",
-    ".kt",
-    ".kts",
-    ".go",
-    ".rs",
-    ".c",
-    ".cpp",
-    ".h",
-    ".hpp",
-    ".cs",
-    ".rb",
-    ".php",
-    ".swift",
-    ".scala",
-    ".sh",
-    ".bash",
-    ".zsh",
-    ".fish",
-    ".html",
-    ".css",
-    ".scss",
-    ".less",
-    ".vue",
-    ".svelte",
-    ".json",
-    ".yaml",
-    ".yml",
-    ".toml",
-    ".ini",
-    ".cfg",
-    ".conf",
-    ".xml",
-    ".sql",
-    ".graphql",
-    ".proto",
-    ".md",
-    ".rst",
-    ".txt",
-    ".adoc",
-    ".dockerfile",
-    ".env.example",
-    ".gitignore",
-    ".editorconfig",
-    ".gradle",
-    ".cmake",
-    ".makefile",
-}
-
 # Files without extensions that are typically text
 TEXT_FILENAMES = {
     "Dockerfile",
@@ -91,18 +36,6 @@ TEXT_FILENAMES = {
     ".gitignore",
     ".dockerignore",
     ".editorconfig",
-}
-
-# Directories to always skip
-SKIP_DIRS = {
-    "node_modules",
-    "__pycache__",
-    "venv",
-    ".venv",
-    "dist",
-    "build",
-    ".git",
-    ".codebase-rag",
 }
 
 
@@ -142,7 +75,7 @@ def _is_text_file(
     if path.name in TEXT_FILENAMES:
         return not (exclude_extensions and suffix in exclude_extensions)
 
-    if suffix not in TEXT_EXTENSIONS:
+    if suffix not in set(settings.text_extensions):
         return False
 
     return not (exclude_extensions and suffix in exclude_extensions)
@@ -341,7 +274,8 @@ def _collect_text_files(
 
     for root, dirs, filenames in os.walk(directory):
         # Skip hidden and non-code directories
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS]
+        skip_dirs = set(settings.skip_directories)
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in skip_dirs]
 
         for filename in filenames:
             filepath = Path(root) / filename
@@ -351,7 +285,7 @@ def _collect_text_files(
                 continue
             if not _is_text_file(filepath, include_extensions, exclude_extensions):
                 continue
-            if filepath.stat().st_size > 1_000_000:
+            if filepath.stat().st_size > settings.max_file_size_bytes:
                 log.info("Skipping large file: %s", rel_path)
                 continue
 
@@ -571,7 +505,7 @@ def ingest_incremental(
             continue
         if not _is_text_file(filepath, inc_exts, exc_exts):
             continue
-        if filepath.stat().st_size > 1_000_000:
+        if filepath.stat().st_size > settings.max_file_size_bytes:
             continue
         files_to_ingest.append((filepath, rel_path))
 
