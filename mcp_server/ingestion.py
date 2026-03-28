@@ -365,16 +365,30 @@ def _embed_and_chunk_files(
     directory: str,
     timeout_seconds: float,
     start_time: float,
-) -> tuple[list[dict], list[list[float]]]:
-    """Chunk and embed a list of files. Returns (chunks, embeddings)."""
+) -> tuple[list[dict], list[list[float]], list[str]]:
+    """Chunk and embed a list of files. Returns (chunks, embeddings, processed_rel_paths).
+
+    processed_rel_paths contains the relative paths of files whose chunks were
+    fully generated before any timeout. On timeout, a warning is logged with
+    a summary of processed vs. skipped files.
+    """
     all_chunks: list[dict] = []
     all_embeddings: list[list[float]] = []
+    processed_files: list[str] = []
     now = datetime.now(timezone.utc).isoformat()
 
     for filepath, rel_path in files:
         elapsed = time.time() - start_time
         if elapsed > timeout_seconds:
-            log.warning("Ingestion timeout reached after %d files", len(all_chunks))
+            skipped = [rel for _, rel in files if rel not in set(processed_files)]
+            log.warning(
+                "Ingestion timeout reached after %.1fs. "
+                "Processed %d/%d files. Skipped files: %s",
+                elapsed,
+                len(processed_files),
+                len(files),
+                skipped,
+            )
             break
 
         try:
@@ -396,11 +410,13 @@ def _embed_and_chunk_files(
                 embedding = get_embedding(chunk_text)
                 all_embeddings.append(embedding)
 
+            processed_files.append(rel_path)
+
         except Exception as e:
             log.warning("Failed to process %s: %s", rel_path, e)
             continue
 
-    return all_chunks, all_embeddings
+    return all_chunks, all_embeddings, processed_files
 
 
 def _normalise_extensions(extensions: list[str] | None) -> set[str] | None:
@@ -444,9 +460,6 @@ def ingest_directory(
     vector_size = get_embedding_dimension()
     ensure_collection(vector_size)
 
-    # Delete existing points for this directory (re-ingest cleanly)
-    delete_directory_points(directory)
-
     files_to_ingest = _collect_text_files(directory, inc_exts, exc_exts)
 
     if not files_to_ingest:
@@ -454,24 +467,49 @@ def ingest_directory(
 
     log.info("Found %d text files to ingest", len(files_to_ingest))
 
-    all_chunks, all_embeddings = _embed_and_chunk_files(
+    all_chunks, all_embeddings, processed_files = _embed_and_chunk_files(
         files_to_ingest, directory, timeout_seconds, start_time
     )
 
     if not all_chunks:
         return f"No chunks generated from files in {directory}"
 
-    # Upsert to Qdrant
+    # Two-phase approach: upsert new chunks first, then delete stale old chunks
+    # only for the files that were successfully processed.
+    #
+    # Because delete_file_points filters by (file_path, directory) payload
+    # values — the same values used by the newly upserted chunks — we must
+    # re-upsert after deleting so the new data is not lost.  Using stable UUIDs
+    # (generated once in _embed_and_chunk_files) makes re-upsert idempotent.
+    #
+    # Phase 1: store new chunks (safe — additive operation).
     count = upsert_chunks(all_chunks, all_embeddings)
+
+    # Phase 2: remove stale old points for each processed file, then immediately
+    # restore the new chunks (same UUIDs → idempotent upsert).
+    for rel_path in processed_files:
+        delete_file_points(rel_path, directory)
+    upsert_chunks(all_chunks, all_embeddings)
+
     elapsed = time.time() - start_time
 
-    # Save commit marker for incremental indexing
-    commit = _get_current_commit(directory)
-    if commit:
-        _save_indexed_commit(directory, commit)
+    # Only write the commit marker when ALL files were processed (no timeout).
+    timed_out = len(processed_files) < len(files_to_ingest)
+    if not timed_out:
+        commit = _get_current_commit(directory)
+        if commit:
+            _save_indexed_commit(directory, commit)
+    else:
+        log.warning(
+            "Ingestion incomplete (%d/%d files processed). "
+            "Commit marker NOT updated to avoid marking a partial index as current.",
+            len(processed_files),
+            len(files_to_ingest),
+        )
 
     msg = (
-        f"Ingested {count} chunks from {len(files_to_ingest)} files in {directory} ({elapsed:.1f}s)"
+        f"Ingested {count} chunks from {len(processed_files)}/{len(files_to_ingest)} "
+        f"files in {directory} ({elapsed:.1f}s)"
     )
     log.info(msg)
     return msg
@@ -544,7 +582,7 @@ def ingest_incremental(
     for _, rel_path in files_to_ingest:
         delete_file_points(rel_path, directory)
 
-    all_chunks, all_embeddings = _embed_and_chunk_files(
+    all_chunks, all_embeddings, _processed = _embed_and_chunk_files(
         files_to_ingest, directory, timeout_seconds, start_time
     )
 

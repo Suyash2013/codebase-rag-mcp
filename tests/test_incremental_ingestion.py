@@ -153,6 +153,7 @@ def test_ingest_incremental_deleted_file_calls_delete(
     return_value=(
         [{"id": "1", "text": "x", "file_path": "main.py", "directory": "", "chunk_index": 0, "ingested_at": ""}],
         [[0.1, 0.2, 0.3, 0.4]],
+        ["main.py"],
     ),
 )
 def test_ingest_incremental_changed_file_deletes_before_upsert(
@@ -193,6 +194,7 @@ def test_ingest_incremental_changed_file_deletes_before_upsert(
             {"id": "2", "text": "b", "file_path": "b.py", "directory": "", "chunk_index": 0, "ingested_at": ""},
         ],
         [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]],
+        ["a.py", "b.py"],
     ),
 )
 def test_ingest_incremental_mixed_deleted_and_changed(
