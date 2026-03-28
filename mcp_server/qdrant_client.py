@@ -235,3 +235,37 @@ def delete_directory_points(directory: str) -> int:
         ),
     )
     return -1  # Qdrant doesn't return count; caller can re-check if needed
+
+
+def delete_file_points(file_path: str, directory: str) -> int:
+    """Delete all points belonging to a specific file. Returns count deleted.
+
+    Args:
+        file_path: Relative path to the file (e.g. 'mcp_server/ingestion.py').
+        directory: Directory the file belongs to (used to scope the filter).
+    """
+    client = get_client()
+    # Check whether any points exist before issuing a delete
+    points, _ = client.scroll(
+        collection_name=settings.qdrant_collection,
+        scroll_filter=Filter(
+            must=[
+                FieldCondition(key="directory", match=MatchValue(value=directory)),
+                FieldCondition(key="file_path", match=MatchValue(value=file_path)),
+            ]
+        ),
+        limit=1,
+    )
+    if not points:
+        return 0
+
+    client.delete(
+        collection_name=settings.qdrant_collection,
+        points_selector=Filter(
+            must=[
+                FieldCondition(key="directory", match=MatchValue(value=directory)),
+                FieldCondition(key="file_path", match=MatchValue(value=file_path)),
+            ]
+        ),
+    )
+    return -1  # Qdrant doesn't return count; caller can re-check if needed

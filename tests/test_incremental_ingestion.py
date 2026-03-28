@@ -1,6 +1,7 @@
 """Tests for incremental ingestion and git-based change detection."""
 
 import subprocess
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -9,6 +10,7 @@ from mcp_server.ingestion import (
     _get_last_indexed_commit,
     _save_indexed_commit,
     get_changed_files,
+    ingest_incremental,
 )
 
 
@@ -94,3 +96,127 @@ def test_get_changed_files_committed_changes(git_repo):
 
     changed = get_changed_files(str(git_repo))
     assert "main.py" in changed
+
+
+# ---------------------------------------------------------------------------
+# Tests for deleted-file handling in ingest_incremental
+# ---------------------------------------------------------------------------
+
+
+def _make_git_repo_with_marker(tmp_path):
+    """Helper: init a git repo, commit a file, and save the ingestion marker."""
+    subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True
+    )
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
+    (tmp_path / "main.py").write_text("def hello(): pass\n")
+    subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, capture_output=True)
+    commit = _get_current_commit(str(tmp_path))
+    _save_indexed_commit(str(tmp_path), commit)
+    return tmp_path
+
+
+@patch("mcp_server.ingestion.delete_file_points")
+@patch("mcp_server.ingestion.get_changed_files")
+@patch("mcp_server.ingestion.ensure_collection")
+@patch("mcp_server.ingestion.get_embedding_dimension", return_value=4)
+def test_ingest_incremental_deleted_file_calls_delete(
+    mock_dim,
+    mock_ensure,
+    mock_changed,
+    mock_delete_file,
+    tmp_path,
+):
+    """ingest_incremental should call delete_file_points for files that no longer exist."""
+    # Set up repo with a marker so incremental path is taken
+    _make_git_repo_with_marker(tmp_path)
+
+    # Report a file as changed that does NOT exist on disk (i.e. it was deleted)
+    mock_changed.return_value = ["deleted_module.py"]
+
+    result = ingest_incremental(str(tmp_path))
+
+    mock_delete_file.assert_called_once_with("deleted_module.py", str(tmp_path))
+    # No files to ingest — should return the "no indexable changes" message
+    assert "No indexable changes" in result
+
+
+@patch("mcp_server.ingestion.upsert_chunks", return_value=3)
+@patch("mcp_server.ingestion.delete_file_points")
+@patch("mcp_server.ingestion.get_changed_files")
+@patch("mcp_server.ingestion.ensure_collection")
+@patch("mcp_server.ingestion.get_embedding_dimension", return_value=4)
+@patch(
+    "mcp_server.ingestion._embed_and_chunk_files",
+    return_value=(
+        [{"id": "1", "text": "x", "file_path": "main.py", "directory": "", "chunk_index": 0, "ingested_at": ""}],
+        [[0.1, 0.2, 0.3, 0.4]],
+    ),
+)
+def test_ingest_incremental_changed_file_deletes_before_upsert(
+    mock_embed,
+    mock_dim,
+    mock_ensure,
+    mock_changed,
+    mock_delete_file,
+    mock_upsert,
+    tmp_path,
+):
+    """ingest_incremental should delete old chunks before upserting new ones for changed files."""
+    _make_git_repo_with_marker(tmp_path)
+
+    # main.py exists and is reported as changed
+    (tmp_path / "main.py").write_text("def hello(): return 'updated'\n")
+    mock_changed.return_value = ["main.py"]
+
+    result = ingest_incremental(str(tmp_path))
+
+    # delete_file_points must have been called for main.py
+    mock_delete_file.assert_called_once_with("main.py", str(tmp_path))
+    # upsert must also have been called
+    mock_upsert.assert_called_once()
+    assert "Incrementally indexed" in result
+
+
+@patch("mcp_server.ingestion.upsert_chunks", return_value=2)
+@patch("mcp_server.ingestion.delete_file_points")
+@patch("mcp_server.ingestion.get_changed_files")
+@patch("mcp_server.ingestion.ensure_collection")
+@patch("mcp_server.ingestion.get_embedding_dimension", return_value=4)
+@patch(
+    "mcp_server.ingestion._embed_and_chunk_files",
+    return_value=(
+        [
+            {"id": "1", "text": "a", "file_path": "a.py", "directory": "", "chunk_index": 0, "ingested_at": ""},
+            {"id": "2", "text": "b", "file_path": "b.py", "directory": "", "chunk_index": 0, "ingested_at": ""},
+        ],
+        [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]],
+    ),
+)
+def test_ingest_incremental_mixed_deleted_and_changed(
+    mock_embed,
+    mock_dim,
+    mock_ensure,
+    mock_changed,
+    mock_delete_file,
+    mock_upsert,
+    tmp_path,
+):
+    """ingest_incremental handles a mix of deleted and changed files correctly."""
+    _make_git_repo_with_marker(tmp_path)
+
+    # a.py and b.py exist (changed), gone.py does not (deleted)
+    (tmp_path / "a.py").write_text("x = 1\n")
+    (tmp_path / "b.py").write_text("y = 2\n")
+    mock_changed.return_value = ["a.py", "b.py", "gone.py"]
+
+    ingest_incremental(str(tmp_path))
+
+    # delete_file_points called for deleted file and both changed files
+    actual_args = sorted(c.args[0] for c in mock_delete_file.call_args_list)
+    assert actual_args == ["a.py", "b.py", "gone.py"]
+    # All calls use the same directory
+    for c in mock_delete_file.call_args_list:
+        assert c.args[1] == str(tmp_path)

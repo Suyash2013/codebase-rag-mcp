@@ -15,6 +15,7 @@ from config.settings import settings
 from mcp_server.embeddings import get_embedding, get_embedding_dimension
 from mcp_server.qdrant_client import (
     delete_directory_points,
+    delete_file_points,
     ensure_collection,
     is_directory_indexed,
     upsert_chunks,
@@ -524,8 +525,9 @@ def ingest_incremental(
     for rel_path in changed_files:
         filepath = base_path / rel_path
         if not filepath.exists():
-            # File was deleted — we'd need to remove its chunks
-            # For now, skip (full re-ingest handles this)
+            # File was deleted — remove its stale chunks from the index
+            log.info("Removing deleted file from index: %s", rel_path)
+            delete_file_points(rel_path, directory)
             continue
         if gitignore and gitignore.match_file(rel_path):
             continue
@@ -538,8 +540,9 @@ def ingest_incremental(
     if not files_to_ingest:
         return f"No indexable changes found in {directory}"
 
-    # TODO: Delete old chunks for changed files before re-inserting
-    # For now, we just add new chunks (some duplication possible)
+    # Delete old chunks for changed files before re-inserting to avoid duplicates
+    for _, rel_path in files_to_ingest:
+        delete_file_points(rel_path, directory)
 
     all_chunks, all_embeddings = _embed_and_chunk_files(
         files_to_ingest, directory, timeout_seconds, start_time
