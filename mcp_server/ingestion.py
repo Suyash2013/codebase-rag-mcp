@@ -21,7 +21,7 @@ from mcp_server.qdrant_client import (
     upsert_chunks,
 )
 
-log = logging.getLogger("codebase-rag-mcp")
+log = logging.getLogger("rag-mcp")
 
 # Files without extensions that are typically text
 TEXT_FILENAMES = {
@@ -199,7 +199,7 @@ def _get_current_commit(directory: str) -> str | None:
 
 def _get_last_indexed_commit(directory: str) -> str | None:
     """Read the commit hash from the last ingestion marker."""
-    marker = Path(directory) / ".codebase-rag" / "last_commit.txt"
+    marker = Path(directory) / ".rag-mcp" / "last_commit.txt"
     if marker.exists():
         return marker.read_text(encoding="utf-8").strip()
     return None
@@ -207,7 +207,7 @@ def _get_last_indexed_commit(directory: str) -> str | None:
 
 def _save_indexed_commit(directory: str, commit_hash: str) -> None:
     """Save the commit hash after ingestion."""
-    marker_dir = Path(directory) / ".codebase-rag"
+    marker_dir = Path(directory) / ".rag-mcp"
     marker_dir.mkdir(parents=True, exist_ok=True)
     (marker_dir / "last_commit.txt").write_text(commit_hash, encoding="utf-8")
 

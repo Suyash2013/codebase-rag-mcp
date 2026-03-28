@@ -13,7 +13,7 @@ def test_default_settings():
         assert s.qdrant_mode == "local"
         assert s.qdrant_host == "localhost"
         assert s.qdrant_port == 6333
-        assert s.qdrant_collection == "codebase"
+        assert s.qdrant_collection == "documents"
         assert s.embedding_provider == "onnx"
         assert s.onnx_model_name == "all-MiniLM-L6-v2"
         assert s.ollama_embed_model == "snowflake-arctic-embed:latest"
@@ -76,7 +76,7 @@ def test_get_working_directory_override():
 
 
 def test_get_qdrant_local_path_default():
-    """get_qdrant_local_path should default to .codebase-rag/qdrant under working dir."""
+    """get_qdrant_local_path should default to .rag-mcp/qdrant under working dir."""
     with patch.dict(
         os.environ,
         {
@@ -88,8 +88,8 @@ def test_get_qdrant_local_path_default():
 
         s = Settings()
         assert (
-            s.get_qdrant_local_path().endswith(".codebase-rag/qdrant")
-            or ".codebase-rag" in s.get_qdrant_local_path()
+            s.get_qdrant_local_path().endswith(".rag-mcp/qdrant")
+            or ".rag-mcp" in s.get_qdrant_local_path()
         )
 
 
@@ -103,7 +103,7 @@ def test_get_qdrant_local_path_override():
 
 
 def test_get_onnx_model_path_default():
-    """get_onnx_model_path should default to .codebase-rag/models under working dir."""
+    """get_onnx_model_path should default to .rag-mcp/models under working dir."""
     with patch.dict(
         os.environ,
         {
@@ -114,7 +114,7 @@ def test_get_onnx_model_path_default():
         from config.settings import Settings
 
         s = Settings()
-        assert ".codebase-rag" in s.get_onnx_model_path()
+        assert ".rag-mcp" in s.get_onnx_model_path()
 
 
 def test_embedding_provider_settings():

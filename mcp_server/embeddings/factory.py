@@ -5,7 +5,7 @@ import logging
 from config.settings import settings
 from mcp_server.embeddings.base import EmbeddingProvider
 
-log = logging.getLogger("codebase-rag-mcp")
+log = logging.getLogger("rag-mcp")
 
 
 def create_provider() -> EmbeddingProvider:

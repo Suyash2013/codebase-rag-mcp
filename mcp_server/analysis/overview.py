@@ -1,4 +1,4 @@
-"""Codebase overview generator — compressed project summary for Claude."""
+"""Overview generator — compressed project summary for LLM context."""
 
 import json
 import logging
@@ -9,7 +9,7 @@ from pathlib import Path
 
 from config.settings import settings
 
-log = logging.getLogger("codebase-rag-mcp")
+log = logging.getLogger("rag-mcp")
 
 # Known project manifest files and what they indicate
 _MANIFEST_FILES = {
@@ -314,8 +314,8 @@ def _compute_fingerprint(directory: str) -> str:
 
 
 def save_overview(directory: str, overview: dict) -> str:
-    """Save overview and its fingerprint to .codebase-rag/overview.json."""
-    cache_dir = Path(directory) / ".codebase-rag"
+    """Save overview and its fingerprint to .rag-mcp/overview.json."""
+    cache_dir = Path(directory) / ".rag-mcp"
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = cache_dir / "overview.json"
     fingerprint = _compute_fingerprint(directory)
@@ -330,7 +330,7 @@ def load_cached_overview(directory: str) -> dict | None:
 
     Returns None when the cache is missing or stale (fingerprint mismatch).
     """
-    path = Path(directory) / ".codebase-rag" / "overview.json"
+    path = Path(directory) / ".rag-mcp" / "overview.json"
     if not path.exists():
         return None
     try:

@@ -70,9 +70,9 @@ def test_get_changed_files_with_changes(git_repo):
 
 
 def test_get_changed_files_no_changes(git_repo):
-    """Should return empty when nothing changed (excluding .codebase-rag marker)."""
-    # Add .codebase-rag to gitignore so it doesn't show as untracked
-    (git_repo / ".gitignore").write_text(".codebase-rag/\n")
+    """Should return empty when nothing changed (excluding .rag-mcp marker)."""
+    # Add .rag-mcp to gitignore so it doesn't show as untracked
+    (git_repo / ".gitignore").write_text(".rag-mcp/\n")
     subprocess.run(["git", "add", ".gitignore"], cwd=git_repo, capture_output=True)
     subprocess.run(["git", "commit", "-m", "add gitignore"], cwd=git_repo, capture_output=True)
 

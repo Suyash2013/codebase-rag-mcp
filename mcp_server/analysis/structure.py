@@ -8,7 +8,7 @@ from pathlib import Path
 
 from config.settings import settings
 
-log = logging.getLogger("codebase-rag-mcp")
+log = logging.getLogger("rag-mcp")
 
 # Directories to skip during analysis — driven by settings.skip_directories
 

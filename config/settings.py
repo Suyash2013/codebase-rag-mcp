@@ -1,4 +1,4 @@
-"""Centralized configuration for the codebase-rag MCP server."""
+"""Centralized configuration for the rag-mcp server."""
 
 import os
 from pathlib import Path
@@ -11,17 +11,17 @@ class Settings(BaseSettings):
 
     # Qdrant
     qdrant_mode: str = "local"  # "local" (on-disk, zero-config) | "remote" (Docker/cloud)
-    qdrant_local_path: str = ""  # defaults to {working_dir}/.codebase-rag/qdrant
+    qdrant_local_path: str = ""  # defaults to {working_dir}/.rag-mcp/qdrant
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
-    qdrant_collection: str = "codebase"
+    qdrant_collection: str = "documents"
 
     # Embedding provider
     embedding_provider: str = "onnx"  # "onnx" | "ollama" | "openai" | "voyage"
 
     # ONNX local embeddings (default, zero-config)
     onnx_model_name: str = "all-MiniLM-L6-v2"
-    onnx_model_path: str = ""  # defaults to {working_dir}/.codebase-rag/models/
+    onnx_model_path: str = ""  # defaults to {working_dir}/.rag-mcp/models/
 
     # Ollama embeddings
     ollama_base_url: str = "http://localhost:11434"
@@ -49,6 +49,7 @@ class Settings(BaseSettings):
         "build",
         ".git",
         ".codebase-rag",
+        ".rag-mcp",
         ".idea",
         ".vscode",
         "target",
@@ -123,12 +124,12 @@ class Settings(BaseSettings):
     def get_qdrant_local_path(self) -> str:
         if self.qdrant_local_path:
             return self.qdrant_local_path
-        return str(Path(self.get_working_directory()) / ".codebase-rag" / "qdrant")
+        return str(Path(self.get_working_directory()) / ".rag-mcp" / "qdrant")
 
     def get_onnx_model_path(self) -> str:
         if self.onnx_model_path:
             return self.onnx_model_path
-        return str(Path(self.get_working_directory()) / ".codebase-rag" / "models")
+        return str(Path(self.get_working_directory()) / ".rag-mcp" / "models")
 
 
 # Singleton instance

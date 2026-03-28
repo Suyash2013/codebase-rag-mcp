@@ -1,4 +1,4 @@
-"""CLI entry points for codebase-rag-mcp."""
+"""CLI entry points for rag-mcp."""
 
 import json
 import os
@@ -15,18 +15,18 @@ def main():
 
 
 def setup():
-    """Auto-register codebase-rag-mcp with Claude Code."""
-    print("=== codebase-rag-mcp Setup ===\n")
+    """Auto-register rag-mcp with Claude Code."""
+    print("=== rag-mcp Setup ===\n")
 
-    # Find the codebase-rag command
-    cmd = shutil.which("codebase-rag")
+    # Find the rag-mcp command
+    cmd = shutil.which("rag-mcp")
     if cmd:
-        command = "codebase-rag"
+        command = "rag-mcp"
     else:
         # Fall back to python -m
         command = sys.executable
         args = ["-m", "mcp_server.server"]
-        print(f"Note: 'codebase-rag' not found in PATH, using: {command} {' '.join(args)}")
+        print(f"Note: 'rag-mcp' not found in PATH, using: {command} {' '.join(args)}")
 
     # Determine Claude Code config path
     config_path = _find_claude_config()
@@ -51,17 +51,17 @@ def setup():
     if "mcpServers" not in config:
         config["mcpServers"] = {}
 
-    if "codebase-rag" in config["mcpServers"]:
-        print("codebase-rag is already registered in Claude Code.")
+    if "rag-mcp" in config["mcpServers"]:
+        print("rag-mcp is already registered in Claude Code.")
         print(f"Config file: {config_path}")
         return
 
     if cmd:
-        config["mcpServers"]["codebase-rag"] = {
-            "command": "codebase-rag",
+        config["mcpServers"]["rag-mcp"] = {
+            "command": "rag-mcp",
         }
     else:
-        config["mcpServers"]["codebase-rag"] = {
+        config["mcpServers"]["rag-mcp"] = {
             "command": command,
             "args": ["-m", "mcp_server.server"],
         }
@@ -71,7 +71,7 @@ def setup():
         config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
-        print(f"Registered codebase-rag-mcp in {config_path}")
+        print(f"Registered rag-mcp in {config_path}")
         print("\nRestart Claude Code to activate the plugin.")
     except OSError as e:
         print(f"Error writing config: {e}")
@@ -111,8 +111,8 @@ def _print_manual_config(command: str, is_direct: bool):
     if not is_direct:
         server_config["args"] = ["-m", "mcp_server.server"]
     else:
-        server_config["command"] = "codebase-rag"
-    config = {"mcpServers": {"codebase-rag": server_config}}
+        server_config["command"] = "rag-mcp"
+    config = {"mcpServers": {"rag-mcp": server_config}}
 
     print(json.dumps(config, indent=2))
 

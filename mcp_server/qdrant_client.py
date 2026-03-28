@@ -16,7 +16,7 @@ from qdrant_client.http.models import (
 
 from config.settings import settings
 
-log = logging.getLogger("codebase-rag-mcp")
+log = logging.getLogger("rag-mcp")
 
 _client: QdrantClient | None = None
 

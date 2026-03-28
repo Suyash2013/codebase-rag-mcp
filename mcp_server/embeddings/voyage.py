@@ -7,7 +7,7 @@ import requests
 from config.settings import settings
 from mcp_server.embeddings.base import EmbeddingProvider
 
-log = logging.getLogger("codebase-rag-mcp")
+log = logging.getLogger("rag-mcp")
 
 # Known dimensions for Voyage models
 _KNOWN_DIMENSIONS = {

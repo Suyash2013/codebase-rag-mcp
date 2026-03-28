@@ -7,7 +7,7 @@ from pathlib import Path
 from config.settings import settings
 from mcp_server.embeddings.base import EmbeddingProvider
 
-log = logging.getLogger("codebase-rag-mcp")
+log = logging.getLogger("rag-mcp")
 
 # Model registry: name -> (repo_id, file, dimension)
 _MODEL_REGISTRY = {

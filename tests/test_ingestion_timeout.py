@@ -73,7 +73,7 @@ def test_embed_and_chunk_files_timeout_logs_skipped(mock_embed, tmp_path, caplog
     import logging
 
     files = _make_file_list(tmp_path, ["a.py", "b.py"])
-    with caplog.at_level(logging.WARNING, logger="codebase-rag-mcp"):
+    with caplog.at_level(logging.WARNING, logger="rag-mcp"):
         _embed_and_chunk_files(
             files, str(tmp_path), timeout_seconds=0, start_time=time.time() - 9999
         )
@@ -191,7 +191,7 @@ def test_ingest_directory_no_commit_marker_on_partial(
     ingest_directory(str(tmp_path))
 
     # last_commit.txt must NOT have been created
-    marker = tmp_path / ".codebase-rag" / "last_commit.txt"
+    marker = tmp_path / ".rag-mcp" / "last_commit.txt"
     assert not marker.exists(), "Commit marker must not be written for partial ingestion"
 
 
