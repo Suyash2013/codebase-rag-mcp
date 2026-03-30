@@ -99,6 +99,7 @@ class Settings(BaseSettings):
         ".md",
         ".rst",
         ".txt",
+        ".log",
         ".adoc",
         ".dockerfile",
         ".env.example",
@@ -112,6 +113,9 @@ class Settings(BaseSettings):
     # Search
     default_n_results: int = 10
     max_n_results: int = 20
+    hybrid_search_enabled: bool = True
+    hybrid_semantic_weight: float = 0.7
+    hybrid_bm25_weight: float = 0.3
 
     # Runtime — set to cwd at startup if not overridden
     working_directory: str = ""

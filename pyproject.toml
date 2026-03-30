@@ -20,6 +20,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-cov", "responses", "ruff>=0.8.0", "mypy>=1.13.0", "pre-commit>=4.0"]
+pdf = ["pymupdf"]
+docx = ["python-docx"]
+image = ["pytesseract", "Pillow"]
+all = ["pymupdf", "python-docx", "pytesseract", "Pillow"]
 
 [project.scripts]
 rag-mcp = "mcp_server.cli:main"

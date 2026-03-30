@@ -30,9 +30,9 @@ class GitDetector(ChangeDetector):
                     capture_output=True, text=True, cwd=directory, timeout=30
                 )
                 if result.returncode == 0:
-                    for f in result.stdout.strip().split("\n"):
+                    for f in result.stdout.splitlines():
                         f = f.strip()
-                        if f:
+                        if f and not self._should_skip(f):
                             if (Path(directory) / f).exists():
                                 changed.append(f)
                             else:
@@ -47,12 +47,15 @@ class GitDetector(ChangeDetector):
                 capture_output=True, text=True, cwd=directory, timeout=30
             )
             if result.returncode == 0:
-                for line in result.stdout.strip().split("\n"):
-                    line = line.strip()
+                for line in result.stdout.splitlines():
                     if len(line) > 3:
                         status = line[:2]
                         filepath = line[3:].strip()
-                        if status.strip() == "D":
+                        
+                        if self._should_skip(filepath):
+                            continue
+                            
+                        if status[0] == "D" or status[1] == "D":
                             if filepath not in deleted:
                                 deleted.append(filepath)
                         elif filepath not in changed:
@@ -67,6 +70,18 @@ class GitDetector(ChangeDetector):
             deleted_files=deleted,
             details=f"{len(changed)} changed, {len(deleted)} deleted since {last_commit[:8]}"
         )
+
+    def _should_skip(self, path: str) -> bool:
+        """Check if a path should be ignored by change detection."""
+        # Ignore the data directory itself
+        if path.startswith(DATA_DIR) or f"/{DATA_DIR}" in path:
+            return True
+        # Ignore other common skip directories if they show up
+        skip_dirs = {".git", "node_modules", "__pycache__", "venv", ".venv"}
+        parts = Path(path).parts
+        if any(p in skip_dirs for p in parts):
+            return True
+        return False
 
     def save_checkpoint(self, directory: str) -> None:
         commit = self._get_current_commit(directory)

@@ -98,25 +98,25 @@ def upsert_chunks(
 ) -> int:
     """Store embedded chunks in Qdrant.
 
-    Each chunk dict must have: id, text, file_path, directory, chunk_index, ingested_at
+    Each chunk dict must have: id, text, file_path, directory
+    All other keys are stored in the payload.
     Returns the number of points upserted.
     """
     client = get_client()
 
-    points = [
-        PointStruct(
-            id=chunk["id"],
-            vector=embedding,
-            payload={
-                "text": chunk["text"],
-                "file_path": chunk["file_path"],
-                "directory": chunk["directory"],
-                "chunk_index": chunk["chunk_index"],
-                "ingested_at": chunk["ingested_at"],
-            },
+    points = []
+    for chunk, embedding in zip(chunks, embeddings, strict=False):
+        # Everything but the vector and id goes into payload
+        payload = dict(chunk)
+        cid = payload.pop("id")
+        
+        points.append(
+            PointStruct(
+                id=cid,
+                vector=embedding,
+                payload=payload,
+            )
         )
-        for chunk, embedding in zip(chunks, embeddings, strict=False)
-    ]
 
     # Upsert in batches of 100
     batch_size = 100
@@ -129,15 +129,15 @@ def upsert_chunks(
     return total
 
 
-def search(
+def search_chunks(
     query_embedding: list[float],
-    n_results: int,
+    limit: int,
     directory_filter: str | None = None,
     file_pattern: str | None = None,
 ) -> list[dict]:
     """Query Qdrant with optional directory and file pattern filters.
 
-    Returns list of dicts with keys: text, file_path, score, directory.
+    Returns list of dicts with keys: id, text, file_path, score, directory, and other payload fields.
     """
     client = get_client()
 
@@ -157,22 +157,18 @@ def search(
         collection_name=settings.qdrant_collection,
         query=query_embedding,
         query_filter=query_filter,
-        limit=n_results,
+        limit=limit,
     )
 
     hits = []
     for point in response.points:
         payload = point.payload or {}
-        file_path = payload.get("file_path", "unknown")
-
-        hits.append(
-            {
-                "text": payload.get("text", ""),
-                "file_path": file_path,
-                "score": point.score,
-                "directory": payload.get("directory", ""),
-            }
-        )
+        hit = {
+            "id": str(point.id),
+            "score": point.score,
+            **payload
+        }
+        hits.append(hit)
 
     return hits
 

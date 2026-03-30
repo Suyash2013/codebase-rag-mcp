@@ -1,10 +1,14 @@
 """Tests for Qdrant client operations using in-memory Qdrant."""
 
 import uuid
+from unittest.mock import patch
 
 import pytest
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, PointStruct, VectorParams
+
+
+from config.settings import settings
 
 
 @pytest.fixture
@@ -12,7 +16,7 @@ def memory_client():
     """Create an in-memory Qdrant client for testing."""
     client = QdrantClient(":memory:")
     client.create_collection(
-        collection_name="test_codebase",
+        collection_name=settings.qdrant_collection,
         vectors_config=VectorParams(size=4, distance=Distance.COSINE),
     )
     return client
@@ -56,70 +60,69 @@ def populated_client(memory_client):
             },
         ),
     ]
-    memory_client.upsert(collection_name="test_codebase", points=points)
+    memory_client.upsert(collection_name=settings.qdrant_collection, points=points)
     return memory_client
 
 
 def test_collection_creation(memory_client):
     """Collection should exist after creation."""
     collections = [c.name for c in memory_client.get_collections().collections]
-    assert "test_codebase" in collections
+    assert settings.qdrant_collection in collections
 
 
-def test_search_returns_results(populated_client):
-    """Search should return matching results."""
-    response = populated_client.query_points(
-        collection_name="test_codebase",
-        query=[0.1, 0.2, 0.3, 0.4],
-        limit=2,
-    )
-    assert len(response.points) == 2
-    assert response.points[0].payload["file_path"] == "main.py"
+def test_search_chunks_returns_results(populated_client):
+    """search_chunks should return matching results with scores."""
+    from mcp_server.qdrant_client import ensure_collection, search_chunks
+    with patch("mcp_server.qdrant_client.get_client", return_value=populated_client):
+        ensure_collection(4)
+        hits = search_chunks(
+            query_embedding=[0.1, 0.2, 0.3, 0.4],
+            limit=2,
+        )
+    assert len(hits) == 2
+    assert hits[0]["file_path"] == "main.py"
+    assert "score" in hits[0]
 
 
-def test_search_with_filter(populated_client):
-    """Search with directory filter should restrict results."""
-    from qdrant_client.http.models import FieldCondition, Filter, MatchValue
-
-    response = populated_client.query_points(
-        collection_name="test_codebase",
-        query=[0.1, 0.2, 0.3, 0.4],
-        query_filter=Filter(
-            must=[FieldCondition(key="directory", match=MatchValue(value="/test/project"))]
-        ),
-        limit=10,
-    )
-    assert len(response.points) == 2
-    for r in response.points:
-        assert r.payload["directory"] == "/test/project"
+def test_search_chunks_with_filter(populated_client):
+    """search_chunks with directory filter should restrict results."""
+    from mcp_server.qdrant_client import ensure_collection, search_chunks
+    with patch("mcp_server.qdrant_client.get_client", return_value=populated_client):
+        ensure_collection(4)
+        hits = search_chunks(
+            query_embedding=[0.1, 0.2, 0.3, 0.4],
+            limit=10,
+            directory_filter="/test/project"
+        )
+    assert len(hits) == 2
+    for h in hits:
+        assert h["directory"] == "/test/project"
 
 
-def test_search_with_file_pattern_filter(populated_client):
-    """Search with MatchText file_pattern filter should restrict to matching file paths."""
-    from qdrant_client.http.models import FieldCondition, Filter, MatchText
-
-    response = populated_client.query_points(
-        collection_name="test_codebase",
-        query=[0.1, 0.2, 0.3, 0.4],
-        query_filter=Filter(
-            must=[FieldCondition(key="file_path", match=MatchText(text=".py"))]
-        ),
-        limit=10,
-    )
-    assert len(response.points) == 1
-    assert response.points[0].payload["file_path"] == "main.py"
+def test_search_chunks_with_file_pattern_filter(populated_client):
+    """search_chunks with file_pattern filter should restrict to matching file paths."""
+    from mcp_server.qdrant_client import ensure_collection, search_chunks
+    with patch("mcp_server.qdrant_client.get_client", return_value=populated_client):
+        ensure_collection(4)
+        hits = search_chunks(
+            query_embedding=[0.1, 0.2, 0.3, 0.4],
+            limit=10,
+            file_pattern=".py"
+        )
+    assert len(hits) == 1
+    assert hits[0]["file_path"] == "main.py"
 
 
 def test_collection_stats(populated_client):
     """Stats should report correct point count."""
-    info = populated_client.get_collection("test_codebase")
+    info = populated_client.get_collection(settings.qdrant_collection)
     assert info.points_count == 3
 
 
 def test_empty_collection_search(memory_client):
     """Search on empty collection should return empty list."""
     response = memory_client.query_points(
-        collection_name="test_codebase",
+        collection_name=settings.qdrant_collection,
         query=[0.1, 0.2, 0.3, 0.4],
         limit=5,
     )
@@ -163,15 +166,15 @@ def _delete_file_points_impl(client, collection_name: str, file_path: str, direc
 def test_delete_file_points_removes_matching(populated_client):
     """delete_file_points should delete only points for the specified file."""
     result = _delete_file_points_impl(
-        populated_client, "test_codebase", "main.py", "/test/project"
+        populated_client, settings.qdrant_collection, "main.py", "/test/project"
     )
     assert result == -1  # Indicates deletion occurred
 
-    info = populated_client.get_collection("test_codebase")
+    info = populated_client.get_collection(settings.qdrant_collection)
     assert info.points_count == 2  # main.py removed, app.js + queries.sql remain
 
     # Verify the remaining files are not main.py
-    remaining, _ = populated_client.scroll(collection_name="test_codebase", limit=10)
+    remaining, _ = populated_client.scroll(collection_name=settings.qdrant_collection, limit=10)
     remaining_paths = [p.payload["file_path"] for p in remaining]
     assert "main.py" not in remaining_paths
     assert "app.js" in remaining_paths
@@ -181,11 +184,11 @@ def test_delete_file_points_removes_matching(populated_client):
 def test_delete_file_points_no_match_returns_zero(populated_client):
     """delete_file_points should return 0 when no points match."""
     result = _delete_file_points_impl(
-        populated_client, "test_codebase", "nonexistent.py", "/test/project"
+        populated_client, settings.qdrant_collection, "nonexistent.py", "/test/project"
     )
     assert result == 0
     # Collection unchanged
-    info = populated_client.get_collection("test_codebase")
+    info = populated_client.get_collection(settings.qdrant_collection)
     assert info.points_count == 3
 
 
@@ -193,10 +196,10 @@ def test_delete_file_points_scoped_to_directory(populated_client):
     """delete_file_points with wrong directory should not delete the file's points."""
     # queries.sql belongs to /other/project — passing /test/project should be a no-op
     result = _delete_file_points_impl(
-        populated_client, "test_codebase", "queries.sql", "/test/project"
+        populated_client, settings.qdrant_collection, "queries.sql", "/test/project"
     )
     assert result == 0
-    info = populated_client.get_collection("test_codebase")
+    info = populated_client.get_collection(settings.qdrant_collection)
     assert info.points_count == 3
 
 
@@ -228,12 +231,12 @@ def test_delete_file_points_multiple_chunks(memory_client):
             },
         )
     ]
-    memory_client.upsert(collection_name="test_codebase", points=points)
+    memory_client.upsert(collection_name=settings.qdrant_collection, points=points)
 
     result = _delete_file_points_impl(
-        memory_client, "test_codebase", "big_file.py", "/project"
+        memory_client, settings.qdrant_collection, "big_file.py", "/project"
     )
     assert result == -1
 
-    info = memory_client.get_collection("test_codebase")
+    info = memory_client.get_collection(settings.qdrant_collection)
     assert info.points_count == 1  # Only other.py remains

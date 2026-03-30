@@ -1,19 +1,25 @@
 """Fallback extractor for plain text files."""
 
 from pathlib import Path
+from config.settings import settings
 from mcp_server.extractors.base import ExtractorBase, ExtractionResult
 
 
 class TextExtractor(ExtractorBase):
     """Fallback extractor for plain text files."""
 
-    TEXT_EXTENSIONS = {".txt", ".log", ".env.example", ".gitignore", ".editorconfig"}
-
     def supported_extensions(self) -> set[str]:
-        return self.TEXT_EXTENSIONS
+        # Respect settings.text_extensions for what we consider "text"
+        return set(settings.text_extensions)
 
     def supported_filenames(self) -> set[str]:
-        return set()
+        # These are handled by specific extractors if they exist,
+        # but as a fallback we can accept them as plain text.
+        return {
+            "Dockerfile", "Makefile", "CMakeLists.txt", "Jenkinsfile",
+            "Procfile", "Vagrantfile", "Gemfile", "Rakefile",
+            ".gitignore", ".dockerignore", ".editorconfig",
+        }
 
     def extract(self, path: Path) -> ExtractionResult:
         text = path.read_text(encoding="utf-8", errors="replace")

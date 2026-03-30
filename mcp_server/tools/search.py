@@ -1,99 +1,132 @@
-"""MCP tools for semantic codebase search."""
+"""MCP tools for semantic and hybrid search."""
 
+import logging
 from config.settings import settings
 from mcp_server.embeddings import get_embedding
+from mcp_server.qdrant_client import search_chunks
+from mcp_server.storage import BM25Index, reciprocal_rank_fusion
 from mcp_server.ingestion import ingest_directory, needs_ingestion
-from mcp_server.qdrant_client import search
+
+log = logging.getLogger("rag-mcp")
+
+# Global cache for BM25 indexes by directory
+_bm25_cache: dict[str, BM25Index] = {}
 
 
-def _format_results(query: str, hits: list[dict]) -> str:
-    """Format search results into a readable string for Claude Code."""
-    if not hits:
-        return f"No results found for: {query}"
+def _get_bm25_index(directory: str) -> BM25Index | None:
+    if directory in _bm25_cache:
+        return _bm25_cache[directory]
+    
+    index = BM25Index(directory)
+    if index.load():
+        _bm25_cache[directory] = index
+        return index
+    return None
 
-    parts = [f'Found {len(hits)} results for: "{query}"\n']
 
-    for i, hit in enumerate(hits):
-        parts.append(
-            f"--- Result {i + 1} (score: {hit['score']:.4f}) ---\n"
-            f"Source: {hit['file_path']}\n"
-            f"```\n{hit['text']}\n```"
+def search_codebase(
+    query: str,
+    n_results: int | None = None,
+) -> str:
+    """Search the current codebase using semantic or hybrid search.
+
+    Args:
+        query: Natural language query.
+        n_results: Optional number of results to return (default: 10).
+    """
+    try:
+        directory = settings.get_working_directory()
+        
+        # Auto-ingest if needed
+        if needs_ingestion(directory):
+            log.info("Auto-ingesting %s before search", directory)
+            ingest_directory(directory)
+            # Clear cache to force reload after ingestion
+            if directory in _bm25_cache:
+                del _bm25_cache[directory]
+
+        n = n_results or settings.default_n_results
+        n = min(n, settings.max_n_results)
+
+        # 1. Semantic search
+        query_vector = get_embedding(query)
+        semantic_results = search_chunks(query_vector, limit=n * 2)
+
+        # 2. Hybrid search if enabled and BM25 index exists
+        if settings.hybrid_search_enabled:
+            bm25 = _get_bm25_index(directory)
+            if bm25:
+                bm25_results = bm25.search(query, top_k=n * 2)
+                results = reciprocal_rank_fusion(
+                    semantic_results,
+                    bm25_results,
+                    semantic_weight=settings.hybrid_semantic_weight,
+                    bm25_weight=settings.hybrid_bm25_weight,
+                )
+                # Take top n
+                results = results[:n]
+            else:
+                results = semantic_results[:n]
+        else:
+            results = semantic_results[:n]
+
+        if not results:
+            return f"No results found for '{query}' in {directory}"
+
+        formatted = []
+        for r in results:
+            file_path = r.get("file_path", "unknown")
+            text = r.get("text", "")
+            score = r.get("fused_score") or r.get("score", 0.0)
+            
+            formatted.append(f"--- {file_path} (score: {score:.3f}) ---\n{text}\n")
+
+        return "\n".join(formatted)
+    except Exception as e:
+        log.error("Error searching codebase: %s", e)
+        return f"Error searching codebase: {e}"
+
+
+def search_codebase_by_file(
+    query: str,
+    file_pattern: str,
+    n_results: int | None = None,
+) -> str:
+    """Search the codebase restricting results to files matching a pattern.
+
+    Args:
+        query: Natural language query.
+        file_pattern: Glob-style pattern or substring for file paths (e.g. '.py', 'models/').
+        n_results: Optional number of results to return (default: 10).
+    """
+    try:
+        directory = settings.get_working_directory()
+        
+        if needs_ingestion(directory):
+            ingest_directory(directory)
+
+        n = n_results or settings.default_n_results
+        n = min(n, settings.max_n_results)
+
+        query_vector = get_embedding(query)
+        results = search_chunks(
+            query_vector, 
+            limit=n, 
+            directory_filter=directory,
+            file_pattern=file_pattern
         )
 
-    return "\n\n".join(parts)
+        if not results:
+            return f"No results found for '{query}' matching file pattern '{file_pattern}' in {directory}"
 
+        formatted = []
+        for r in results:
+            file_path = r.get("file_path", "unknown")
+            text = r.get("text", "")
+            score = r.get("score", 0.0)
+            formatted.append(f"--- {file_path} (score: {score:.3f}) ---\n{text}\n")
 
-def search_codebase(query: str, n_results: int = 0) -> str:
-    """Semantic search over the indexed codebase — use for conceptual questions.
-
-    Use this tool when you need to understand WHERE something is implemented
-    or HOW a concept works across the codebase. Much more token-efficient than
-    reading files one by one. Auto-ingests on first use.
-
-    Good queries: "authentication middleware", "database connection pooling",
-    "error retry logic", "user input validation".
-
-    Do NOT use for: reading a specific known file (use Read), finding files
-    by name (use Glob), or literal text search (use Grep).
-
-    Args:
-        query: Natural language description of what you're looking for.
-               Be specific — "authentication middleware error handling"
-               works better than just "auth".
-        n_results: Number of results to return (1-20, default 10).
-    """
-    if n_results <= 0:
-        n_results = settings.default_n_results
-    n_results = max(1, min(n_results, settings.max_n_results))
-
-    directory = settings.get_working_directory()
-
-    try:
-        if needs_ingestion(directory):
-            ingest_directory(directory)
-
-        embedding = get_embedding(query)
-        hits = search(embedding, n_results, directory_filter=directory)
-        return _format_results(query, hits)
-
-    except Exception as exc:
-        return f"Error searching codebase: {exc}"
-
-
-def search_codebase_by_file(query: str, file_pattern: str, n_results: int = 0) -> str:
-    """Semantic search restricted to files matching a path pattern.
-
-    Use when you know the general area of the codebase to search in.
-    Combines semantic understanding with file path filtering.
-
-    Examples:
-        - query="dependency injection", file_pattern="di/module"
-        - query="API routes", file_pattern=".py"
-        - query="build config", file_pattern=".gradle"
-
-    Args:
-        query: What to search for semantically.
-        file_pattern: Substring to match in file paths (case-insensitive).
-                      E.g. "viewmodel", "shared/src", ".gradle", "test".
-        n_results: Number of results to return (1-20, default 10).
-    """
-    if n_results <= 0:
-        n_results = settings.default_n_results
-    n_results = max(1, min(n_results, settings.max_n_results))
-
-    directory = settings.get_working_directory()
-
-    try:
-        if needs_ingestion(directory):
-            ingest_directory(directory)
-
-        embedding = get_embedding(query)
-        hits = search(embedding, n_results, directory_filter=directory, file_pattern=file_pattern)
-
-        if not hits:
-            return f"No results matching file pattern '{file_pattern}' for query: \"{query}\""
-
-        return _format_results(f"{query} [files: *{file_pattern}*]", hits)
-
-    except Exception as exc:
-        return f"Error searching codebase: {exc}"
+        return "\n".join(formatted)
+    except Exception as e:
+        log.error("Error searching codebase by file: %s", e)
+        return f"Error searching codebase: {e}"

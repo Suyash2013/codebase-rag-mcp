@@ -56,4 +56,6 @@ def get_extractor(path: Path) -> ExtractorBase | None:
         return _registry[path.name]
     if path.suffix.lower() in _registry:
         return _registry[path.suffix.lower()]
-    return _fallback
+    if _fallback and _fallback.can_extract(path):
+        return _fallback
+    return None
