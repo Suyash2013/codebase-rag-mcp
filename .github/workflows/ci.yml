@@ -53,9 +53,53 @@ jobs:
       - run: pip install -e .
       - run: pip-audit
 
+  claude-review:
+    name: Claude Code Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            Review this PR for correctness, security, type safety, and testing.
+            Focus on substance, not style (ruff handles that).
+
+            Classify every issue found using this priority framework:
+            - BLOCKER: Security vulnerabilities (injection, auth bypass, credential/data exposure)
+            - P0: Critical bugs that crash, corrupt data, or break core functionality
+            - P1: Important bugs, significant security concerns, major test coverage gaps
+            - P2: Non-critical bugs, code quality issues that could cause future problems
+            - P3: Minor improvements, edge cases, non-critical suggestions
+            - P4: Style preferences, documentation, nice-to-haves
+
+            Format each finding as: [PRIORITY] path/to/file.py:line — description
+
+            After your review, write the result:
+            - If you found any BLOCKER or P0 issues: run `echo "BLOCKING" > "$GITHUB_WORKSPACE/.claude_review_result"`
+            - If no BLOCKER/P0 issues: run `echo "PASSING" > "$GITHUB_WORKSPACE/.claude_review_result"`
+      - name: Enforce blocking review
+        run: |
+          if [ -f "$GITHUB_WORKSPACE/.claude_review_result" ] && grep -q "^BLOCKING$" "$GITHUB_WORKSPACE/.claude_review_result"; then
+            echo "::error::Claude Code Review found BLOCKER or P0 issues. These must be resolved before merging."
+            exit 1
+          fi
+
   test:
     name: Test (Python ${{ matrix.python-version }})
-    needs: [lint, typecheck]
+    needs: [lint, typecheck, claude-review, gemini-review]
+    if: |
+      !cancelled() &&
+      needs.lint.result == 'success' &&
+      needs.typecheck.result == 'success' &&
+      (needs.claude-review.result == 'success' || needs.claude-review.result == 'skipped') 
     runs-on: ubuntu-latest
     strategy:
       matrix:

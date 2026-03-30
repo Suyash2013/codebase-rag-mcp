@@ -88,15 +88,15 @@ def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
 
     separators = ["\n\n", "\n", " ", ""]
 
-    def _split(text: str, separators: list[str]) -> list[str]:
+    def _split(text: str, seps: list[str]) -> list[str]:
         """Recursively split text and return chunks directly (no closure side-effects)."""
         if not text.strip():
             return []
         if len(text) <= chunk_size:
             return [text]
 
-        sep = separators[0] if separators else ""
-        remaining_seps = separators[1:] if len(separators) > 1 else [""]
+        sep = seps[0] if seps else ""
+        remaining = seps[1:] if len(seps) > 1 else [""]
 
         if sep == "":
             # Base case: hard split at chunk_size with stride (chunk_size - chunk_overlap)
@@ -110,6 +110,7 @@ def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
         parts = text.split(sep)
         chunks: list[str] = []
         current_chunk = ""
+        result = []
 
         for part in parts:
             candidate = current_chunk + sep + part if current_chunk else part
@@ -125,7 +126,8 @@ def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
                     current_chunk = part
 
         if current_chunk.strip():
-            chunks.append(current_chunk)
+            result.append(current_chunk)
+        return result
 
         return chunks
 
