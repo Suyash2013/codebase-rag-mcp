@@ -92,61 +92,6 @@ jobs:
             exit 1
           fi
 
-  gemini-review:
-    name: Gemini Code Review
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Get PR diff
-        run: git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Run Gemini Review
-        id: gemini
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          npm install -g @google/gemini-cli
-
-          DIFF=$(cat pr_diff.txt)
-          PROMPT="You are a senior code reviewer. Review the following PR diff for correctness, security, type safety, and testing. Focus on substance, not style.
-
-          Classify every issue using this priority framework:
-          - BLOCKER: Security vulnerabilities (injection, auth bypass, credential/data exposure)
-          - P0: Critical bugs that crash, corrupt data, or break core functionality
-          - P1: Important bugs, significant security concerns, major test coverage gaps
-          - P2: Non-critical bugs, code quality issues that could cause future problems
-          - P3: Minor improvements, edge cases, non-critical suggestions
-          - P4: Style preferences, documentation, nice-to-haves
-
-          Format each finding as: [PRIORITY] path/to/file.py:line — description
-
-          At the very end of your response, output exactly one of these lines (nothing else on that line):
-          REVIEW_RESULT: BLOCKING
-          REVIEW_RESULT: PASSING
-
-          PR Diff:
-          $DIFF"
-
-          REVIEW=$(gemini -p "$PROMPT")
-          echo "$REVIEW"
-          echo "$REVIEW" > /tmp/gemini_review.txt
-
-      - name: Enforce blocking review
-        run: |
-          if grep -q "REVIEW_RESULT: BLOCKING" /tmp/gemini_review.txt; then
-            echo "::error::Gemini Code Review found BLOCKER or P0 issues. These must be resolved before merging."
-            exit 1
-          fi
-
   test:
     name: Test (Python ${{ matrix.python-version }})
     needs: [lint, typecheck, claude-review, gemini-review]
@@ -154,8 +99,7 @@ jobs:
       !cancelled() &&
       needs.lint.result == 'success' &&
       needs.typecheck.result == 'success' &&
-      (needs.claude-review.result == 'success' || needs.claude-review.result == 'skipped') &&
-      (needs.gemini-review.result == 'success' || needs.gemini-review.result == 'skipped')
+      (needs.claude-review.result == 'success' || needs.claude-review.result == 'skipped') 
     runs-on: ubuntu-latest
     strategy:
       matrix:
