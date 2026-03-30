@@ -12,6 +12,7 @@ from pathlib import Path
 import pathspec
 
 from config.settings import settings
+from mcp_server.chunkers import get_chunker
 from mcp_server.embeddings import get_embedding, get_embedding_dimension
 from mcp_server.qdrant_client import (
     delete_directory_points,
@@ -81,67 +82,7 @@ def _is_text_file(
     return not (exclude_extensions and suffix in exclude_extensions)
 
 
-def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
-    """Split text into overlapping chunks using recursive character splitting."""
-    if len(text) <= chunk_size:
-        return [text] if text.strip() else []
-
-    separators = ["\n\n", "\n", " ", ""]
-
-    def _split(text: str, seps: list[str]) -> list[str]:
-        """Recursively split text and return chunks directly (no closure side-effects)."""
-        if not text.strip():
-            return []
-        if len(text) <= chunk_size:
-            return [text]
-
-        sep = seps[0] if seps else ""
-        remaining = seps[1:] if len(seps) > 1 else [""]
-
-        if sep == "":
-            # Base case: hard split at chunk_size with stride (chunk_size - chunk_overlap)
-            result = []
-            for i in range(0, len(text), chunk_size - chunk_overlap):
-                piece = text[i : i + chunk_size]
-                if piece.strip():
-                    result.append(piece)
-            return result
-
-        parts = text.split(sep)
-        chunks: list[str] = []
-        current_chunk = ""
-        result = []
-
-        for part in parts:
-            candidate = current_chunk + sep + part if current_chunk else part
-            if len(candidate) <= chunk_size:
-                current_chunk = candidate
-            else:
-                if current_chunk.strip():
-                    chunks.append(current_chunk)
-                if len(part) > chunk_size:
-                    chunks.extend(_split(part, remaining_seps))
-                    current_chunk = ""
-                else:
-                    current_chunk = part
-
-        if current_chunk.strip():
-            result.append(current_chunk)
-        return result
-
-        return chunks
-
-    chunks = _split(text, separators)
-
-    # Apply overlap by including trailing context from previous chunk
-    if chunk_overlap > 0 and len(chunks) > 1:
-        overlapped = [chunks[0]]
-        for i in range(1, len(chunks)):
-            prev_tail = chunks[i - 1][-chunk_overlap:]
-            overlapped.append(prev_tail + chunks[i])
-        return overlapped
-
-    return chunks if chunks else ([text] if text.strip() else [])
+# _chunk_text removed — now handled by mcp_server.chunkers.recursive.RecursiveChunker
 
 
 def _file_hash(path: Path) -> str:
@@ -330,7 +271,10 @@ def _embed_and_chunk_files(
 
         try:
             text = filepath.read_text(encoding="utf-8", errors="ignore")
-            chunks = _chunk_text(text, settings.chunk_size, settings.chunk_overlap)
+            chunker = get_chunker("plain_text")
+            chunk_objs = chunker.chunk(text, settings.chunk_size, settings.chunk_overlap,
+                                       metadata={"file_path": rel_path})
+            chunks = [c.text for c in chunk_objs]
 
             for i, chunk_text in enumerate(chunks):
                 chunk_id = str(uuid.uuid4())

@@ -4,12 +4,21 @@ from pathlib import Path
 
 from mcp_server.ingestion import (
     TEXT_FILENAMES,
-    _chunk_text,
     _collect_text_files,
     _is_text_file,
     _load_gitignore,
     _normalise_extensions,
 )
+from mcp_server.chunkers.recursive import RecursiveChunker
+
+# Compatibility shim: old _chunk_text tests now use RecursiveChunker
+_rc = RecursiveChunker()
+
+
+def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
+    """Shim for tests that were written against the old ingestion._chunk_text."""
+    chunks = _rc.chunk(text, chunk_size, chunk_overlap)
+    return [c.text for c in chunks]
 
 
 def test_chunk_text_small():

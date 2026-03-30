@@ -13,6 +13,14 @@ from unittest.mock import patch
 import pytest
 from qdrant_client import QdrantClient
 
+from mcp_server.chunkers.recursive import RecursiveChunker
+
+_rc = RecursiveChunker()
+
+
+def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
+    return [c.text for c in _rc.chunk(text, chunk_size, chunk_overlap)]
+
 
 def _deterministic_embedding(text: str, dim: int = 384) -> list[float]:
     """Generate a deterministic embedding from text using hashing.
@@ -92,7 +100,7 @@ class TestIntegrationPipeline:
         """Ingest a small codebase and verify search returns results."""
         _test_settings, patches = self._create_patches()
         try:
-            from mcp_server.ingestion import _chunk_text, _collect_text_files
+            from mcp_server.ingestion import _collect_text_files
             from mcp_server.qdrant_client import ensure_collection, search, upsert_chunks
 
             dim = 384
@@ -150,7 +158,7 @@ class TestIntegrationPipeline:
         """Search with file_pattern should only return matching files."""
         _test_settings, patches = self._create_patches()
         try:
-            from mcp_server.ingestion import _chunk_text, _collect_text_files
+            from mcp_server.ingestion import _collect_text_files
             from mcp_server.qdrant_client import ensure_collection, search, upsert_chunks
 
             dim = 384
@@ -209,7 +217,7 @@ class TestIntegrationPipeline:
         """After deleting directory points, count should decrease."""
         _test_settings, patches = self._create_patches()
         try:
-            from mcp_server.ingestion import _chunk_text, _collect_text_files
+            from mcp_server.ingestion import _collect_text_files
             from mcp_server.qdrant_client import (
                 delete_directory_points,
                 ensure_collection,
