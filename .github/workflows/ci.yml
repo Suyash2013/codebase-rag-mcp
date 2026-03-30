@@ -94,7 +94,7 @@ jobs:
 
   test:
     name: Test (Python ${{ matrix.python-version }})
-    needs: [lint, typecheck, claude-review, gemini-review]
+    needs: [ lint, typecheck, claude-review ]
     if: |
       !cancelled() &&
       needs.lint.result == 'success' &&
