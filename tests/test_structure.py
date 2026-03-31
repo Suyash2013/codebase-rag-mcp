@@ -122,6 +122,27 @@ def test_build_dependency_graph(tmp_path):
     assert any("config" in dep for dep in graph["main.py"])
 
 
+def test_get_file_signatures_uses_settings_skip_directories(tmp_path, monkeypatch):
+    """Verify get_file_signatures respects settings.skip_directories, not a hardcoded set."""
+    from config.settings import settings
+    from mcp_server.tools.structure import get_file_signatures
+
+    monkeypatch.setattr(settings, "skip_directories", ["custom_skip"])
+    monkeypatch.setattr(settings, "working_directory", str(tmp_path))
+
+    # Create a file inside the custom skip dir — should be skipped
+    skip_dir = tmp_path / "custom_skip"
+    skip_dir.mkdir()
+    (skip_dir / "skipped.py").write_text("def skipped(): pass")
+
+    # Create a file outside — should appear
+    (tmp_path / "found.py").write_text("def found(): pass")
+
+    result = get_file_signatures()
+    assert "found" in result
+    assert "skipped" not in result
+
+
 def test_build_dependency_graph_empty(tmp_path):
     """Should return empty dict for project with no internal deps."""
     (tmp_path / "standalone.py").write_text("import os\nimport sys\n")

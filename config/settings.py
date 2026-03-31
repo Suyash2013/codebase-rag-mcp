@@ -1,27 +1,51 @@
-"""Centralized configuration for the codebase-rag MCP server."""
+"""Centralized configuration for the omni-rag server."""
 
+import logging
 import os
+import warnings
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+log = logging.getLogger("omni-rag")
+
+# Migrate RAG_* env vars to OMNI_RAG_* for backward compatibility
+_LEGACY_PREFIX = "RAG_"
+_NEW_PREFIX = "OMNI_RAG_"
+
+
+def _migrate_env_vars():
+    for key in list(os.environ.keys()):
+        if key.startswith(_LEGACY_PREFIX) and not key.startswith(_NEW_PREFIX):
+            new_key = _NEW_PREFIX + key[len(_LEGACY_PREFIX) :]
+            if new_key not in os.environ:
+                os.environ[new_key] = os.environ[key]
+                warnings.warn(
+                    f"Env var {key} is deprecated, use {new_key} instead",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+
+
+_migrate_env_vars()
+
 
 class Settings(BaseSettings):
-    """All settings are configurable via environment variables with the RAG_ prefix."""
+    """All settings are configurable via environment variables with the OMNI_RAG_ prefix."""
 
     # Qdrant
     qdrant_mode: str = "local"  # "local" (on-disk, zero-config) | "remote" (Docker/cloud)
-    qdrant_local_path: str = ""  # defaults to {working_dir}/.codebase-rag/qdrant
+    qdrant_local_path: str = ""  # defaults to {working_dir}/.omni-rag/qdrant
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
-    qdrant_collection: str = "codebase"
+    qdrant_collection: str = "omni_rag"
 
     # Embedding provider
     embedding_provider: str = "onnx"  # "onnx" | "ollama" | "openai" | "voyage"
 
     # ONNX local embeddings (default, zero-config)
     onnx_model_name: str = "all-MiniLM-L6-v2"
-    onnx_model_path: str = ""  # defaults to {working_dir}/.codebase-rag/models/
+    onnx_model_path: str = ""  # defaults to {working_dir}/.omni-rag/models/
 
     # Ollama embeddings
     ollama_base_url: str = "http://localhost:11434"
@@ -39,15 +63,92 @@ class Settings(BaseSettings):
     ingestion_timeout_hours: int = 24
     chunk_size: int = 1000
     chunk_overlap: int = 200
+    max_file_size_bytes: int = 1_048_576  # 1 MB
+    skip_directories: list[str] = [
+        "node_modules",
+        "__pycache__",
+        "venv",
+        ".venv",
+        "dist",
+        "build",
+        ".git",
+        ".codebase-rag",
+        ".rag-mcp",
+        ".omni-rag",
+        ".idea",
+        ".vscode",
+        "target",
+        ".gradle",
+    ]
+    text_extensions: list[str] = [
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".java",
+        ".kt",
+        ".kts",
+        ".go",
+        ".rs",
+        ".c",
+        ".cpp",
+        ".h",
+        ".hpp",
+        ".cs",
+        ".rb",
+        ".php",
+        ".swift",
+        ".scala",
+        ".sh",
+        ".bash",
+        ".zsh",
+        ".fish",
+        ".html",
+        ".css",
+        ".scss",
+        ".less",
+        ".vue",
+        ".svelte",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+        ".cfg",
+        ".conf",
+        ".xml",
+        ".sql",
+        ".graphql",
+        ".proto",
+        ".md",
+        ".rst",
+        ".txt",
+        ".log",
+        ".adoc",
+        ".dockerfile",
+        ".env.example",
+        ".gitignore",
+        ".editorconfig",
+        ".gradle",
+        ".cmake",
+        ".makefile",
+    ]
 
     # Search
     default_n_results: int = 10
     max_n_results: int = 20
+    hybrid_search_enabled: bool = True
+    hybrid_semantic_weight: float = 0.7
+    hybrid_bm25_weight: float = 0.3
+
+    # Plugins
+    enable_code_plugin: bool = True
 
     # Runtime — set to cwd at startup if not overridden
     working_directory: str = ""
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="RAG_")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="OMNI_RAG_")
 
     def get_working_directory(self) -> str:
         return self.working_directory or os.getcwd()
@@ -55,12 +156,12 @@ class Settings(BaseSettings):
     def get_qdrant_local_path(self) -> str:
         if self.qdrant_local_path:
             return self.qdrant_local_path
-        return str(Path(self.get_working_directory()) / ".codebase-rag" / "qdrant")
+        return str(Path(self.get_working_directory()) / ".omni-rag" / "qdrant")
 
     def get_onnx_model_path(self) -> str:
         if self.onnx_model_path:
             return self.onnx_model_path
-        return str(Path(self.get_working_directory()) / ".codebase-rag" / "models")
+        return str(Path(self.get_working_directory()) / ".omni-rag" / "models")
 
 
 # Singleton instance

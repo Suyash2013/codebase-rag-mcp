@@ -1,4 +1,4 @@
-"""CLI entry points for codebase-rag-mcp."""
+"""CLI entry points for omni-rag."""
 
 import json
 import os
@@ -15,18 +15,21 @@ def main():
 
 
 def setup():
-    """Auto-register codebase-rag-mcp with Claude Code."""
-    print("=== codebase-rag-mcp Setup ===\n")
+    """Auto-register omni-rag with Claude Code."""
+    print("=== omni-rag Setup ===\n")
 
-    # Find the codebase-rag command
-    cmd = shutil.which("codebase-rag")
+    # Find the omni-rag command
+    cmd = shutil.which("omni-rag")
+    if not cmd:
+        # Try legacy name
+        cmd = shutil.which("rag-mcp")
     if cmd:
-        command = "codebase-rag"
+        command = cmd
     else:
         # Fall back to python -m
         command = sys.executable
         args = ["-m", "mcp_server.server"]
-        print(f"Note: 'codebase-rag' not found in PATH, using: {command} {' '.join(args)}")
+        print(f"Note: 'omni-rag' not found in PATH, using: {command} {' '.join(args)}")
 
     # Determine Claude Code config path
     config_path = _find_claude_config()
@@ -51,17 +54,17 @@ def setup():
     if "mcpServers" not in config:
         config["mcpServers"] = {}
 
-    if "codebase-rag" in config["mcpServers"]:
-        print("codebase-rag is already registered in Claude Code.")
+    if "omni-rag" in config["mcpServers"]:
+        print("omni-rag is already registered in Claude Code.")
         print(f"Config file: {config_path}")
         return
 
     if cmd:
-        config["mcpServers"]["codebase-rag"] = {
-            "command": "codebase-rag",
+        config["mcpServers"]["omni-rag"] = {
+            "command": "omni-rag",
         }
     else:
-        config["mcpServers"]["codebase-rag"] = {
+        config["mcpServers"]["omni-rag"] = {
             "command": command,
             "args": ["-m", "mcp_server.server"],
         }
@@ -71,7 +74,7 @@ def setup():
         config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
-        print(f"Registered codebase-rag-mcp in {config_path}")
+        print(f"Registered omni-rag in {config_path}")
         print("\nRestart Claude Code to activate the plugin.")
     except OSError as e:
         print(f"Error writing config: {e}")
@@ -108,10 +111,10 @@ def _find_claude_config() -> Path | None:
 def _print_manual_config(command: str, is_direct: bool):
     """Print manual configuration instructions."""
     if is_direct:
-        server_config: dict[str, object] = {"command": "codebase-rag"}
+        server_config: dict[str, object] = {"command": "omni-rag"}
     else:
         server_config = {"command": command, "args": ["-m", "mcp_server.server"]}
-    config = {"mcpServers": {"codebase-rag": server_config}}
+    config = {"mcpServers": {"omni-rag": server_config}}
     print(json.dumps(config, indent=2))
 
 

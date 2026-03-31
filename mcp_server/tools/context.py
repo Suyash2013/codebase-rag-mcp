@@ -1,16 +1,16 @@
-"""MCP tool for codebase context and overview."""
+"""MCP tool for directory context and overview."""
 
 from config.settings import settings
 from mcp_server.analysis.overview import generate_overview, load_cached_overview, save_overview
 
 
-def get_codebase_context() -> str:
-    """Get a compressed overview of the codebase structure.
+def get_context() -> str:
+    """Get a compressed overview of the indexed directory structure.
 
     Returns language breakdown, directory structure, key files, and
     dependency information. Use this FIRST when starting work on an
-    unfamiliar codebase to understand its layout before searching
-    for specific code.
+    unfamiliar directory to understand its layout before searching
+    for specific content.
 
     Much cheaper than reading files individually — gives you the big
     picture in one call.
@@ -29,14 +29,14 @@ def get_codebase_context() -> str:
         return _format_overview(overview, cached=False)
 
     except Exception as exc:
-        return f"Error generating codebase overview: {exc}"
+        return f"Error generating directory overview: {exc}"
 
 
 def _format_overview(overview: dict, cached: bool) -> str:
     """Format overview into a readable string."""
     parts = []
 
-    parts.append(f"# Codebase Overview {'(cached)' if cached else '(fresh)'}")
+    parts.append(f"# Directory Overview {'(cached)' if cached else '(fresh)'}")
     parts.append(f"Directory: {overview['directory']}")
     parts.append(f"Total files: {overview['total_files']}")
 

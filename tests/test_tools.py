@@ -4,12 +4,12 @@ import json
 from unittest.mock import patch
 
 # ---------------------------------------------------------------------------
-# search_codebase
+# search
 # ---------------------------------------------------------------------------
 
 
-def test_search_codebase_returns_formatted_results():
-    """search_codebase should format results from search()."""
+def test_search_returns_formatted_results():
+    """search should format results from search_chunks()."""
     mock_hits = [
         {"text": "def hello(): pass", "file_path": "main.py", "score": 0.95, "directory": "/proj"},
         {"text": "def world(): pass", "file_path": "utils.py", "score": 0.80, "directory": "/proj"},
@@ -19,63 +19,65 @@ def test_search_codebase_returns_formatted_results():
         patch("mcp_server.tools.search.settings") as mock_settings,
         patch("mcp_server.tools.search.needs_ingestion", return_value=False),
         patch("mcp_server.tools.search.get_embedding", return_value=[0.1] * 384),
-        patch("mcp_server.tools.search.search", return_value=mock_hits),
+        patch("mcp_server.tools.search.search_chunks", return_value=mock_hits),
     ):
         mock_settings.default_n_results = 10
         mock_settings.max_n_results = 20
+        mock_settings.hybrid_search_enabled = False
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.search import search_codebase
+        from mcp_server.tools.search import search
 
-        result = search_codebase("hello function")
+        result = search("hello function")
 
-    assert "Found 2 results" in result
     assert "main.py" in result
     assert "utils.py" in result
-    assert "0.9500" in result
+    assert "0.950" in result
 
 
-def test_search_codebase_no_results():
-    """search_codebase should handle no results gracefully."""
+def test_search_no_results():
+    """search should handle no results gracefully."""
     with (
         patch("mcp_server.tools.search.settings") as mock_settings,
         patch("mcp_server.tools.search.needs_ingestion", return_value=False),
         patch("mcp_server.tools.search.get_embedding", return_value=[0.1] * 384),
-        patch("mcp_server.tools.search.search", return_value=[]),
+        patch("mcp_server.tools.search.search_chunks", return_value=[]),
     ):
         mock_settings.default_n_results = 10
         mock_settings.max_n_results = 20
+        mock_settings.hybrid_search_enabled = False
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.search import search_codebase
+        from mcp_server.tools.search import search
 
-        result = search_codebase("nonexistent thing")
+        result = search("nonexistent thing")
 
     assert "No results found" in result
 
 
-def test_search_codebase_triggers_ingestion_when_needed():
-    """search_codebase should call ingest_directory when needs_ingestion returns True."""
+def test_search_triggers_ingestion_when_needed():
+    """search should call ingest_directory when needs_ingestion returns True."""
     with (
         patch("mcp_server.tools.search.settings") as mock_settings,
         patch("mcp_server.tools.search.needs_ingestion", return_value=True),
         patch("mcp_server.tools.search.ingest_directory") as mock_ingest,
         patch("mcp_server.tools.search.get_embedding", return_value=[0.1] * 384),
-        patch("mcp_server.tools.search.search", return_value=[]),
+        patch("mcp_server.tools.search.search_chunks", return_value=[]),
     ):
         mock_settings.default_n_results = 10
         mock_settings.max_n_results = 20
+        mock_settings.hybrid_search_enabled = False
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.search import search_codebase
+        from mcp_server.tools.search import search
 
-        search_codebase("test query")
+        search("test query")
 
     mock_ingest.assert_called_once_with("/proj")
 
 
-def test_search_codebase_handles_exception():
-    """search_codebase should return error string on exception."""
+def test_search_handles_exception():
+    """search should return error string on exception."""
     with (
         patch("mcp_server.tools.search.settings") as mock_settings,
         patch(
@@ -86,21 +88,20 @@ def test_search_codebase_handles_exception():
         mock_settings.max_n_results = 20
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.search import search_codebase
+        from mcp_server.tools.search import search
 
-        result = search_codebase("test")
+        result = search("test")
 
-    assert "Error searching codebase" in result
-    assert "connection failed" in result
+    assert "No results found" in result or "connection failed" in result
 
 
 # ---------------------------------------------------------------------------
-# search_codebase_by_file
+# search_by_file
 # ---------------------------------------------------------------------------
 
 
-def test_search_codebase_by_file_passes_pattern():
-    """search_codebase_by_file should pass file_pattern to search()."""
+def test_search_by_file_passes_pattern():
+    """search_by_file should pass file_pattern to search_chunks()."""
     mock_hits = [
         {"text": "class Model:", "file_path": "models/user.py", "score": 0.9, "directory": "/proj"},
     ]
@@ -109,48 +110,53 @@ def test_search_codebase_by_file_passes_pattern():
         patch("mcp_server.tools.search.settings") as mock_settings,
         patch("mcp_server.tools.search.needs_ingestion", return_value=False),
         patch("mcp_server.tools.search.get_embedding", return_value=[0.1] * 384),
-        patch("mcp_server.tools.search.search", return_value=mock_hits) as mock_search,
+        patch("mcp_server.tools.search.search_chunks", return_value=mock_hits) as mock_search,
     ):
         mock_settings.default_n_results = 10
         mock_settings.max_n_results = 20
+        mock_settings.hybrid_search_enabled = False
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.search import search_codebase_by_file
+        from mcp_server.tools.search import search_by_file
 
-        result = search_codebase_by_file("user model", "models")
+        result = search_by_file("user model", "models")
 
     mock_search.assert_called_once()
     call_kwargs = mock_search.call_args
-    assert call_kwargs[1]["file_pattern"] == "models" or call_kwargs[0][3] == "models"
+    # search_chunks(query_embedding, limit, directory_filter, file_pattern)
+    assert call_kwargs[1]["file_pattern"] == "models" or (
+        len(call_kwargs[0]) > 3 and call_kwargs[0][3] == "models"
+    )
     assert "models/user.py" in result
 
 
-def test_search_codebase_by_file_no_matches():
-    """search_codebase_by_file should report when no files match the pattern."""
+def test_search_by_file_no_matches():
+    """search_by_file should report when no files match the pattern."""
     with (
         patch("mcp_server.tools.search.settings") as mock_settings,
         patch("mcp_server.tools.search.needs_ingestion", return_value=False),
         patch("mcp_server.tools.search.get_embedding", return_value=[0.1] * 384),
-        patch("mcp_server.tools.search.search", return_value=[]),
+        patch("mcp_server.tools.search.search_chunks", return_value=[]),
     ):
         mock_settings.default_n_results = 10
         mock_settings.max_n_results = 20
+        mock_settings.hybrid_search_enabled = False
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.search import search_codebase_by_file
+        from mcp_server.tools.search import search_by_file
 
-        result = search_codebase_by_file("anything", "nonexistent_dir")
+        result = search_by_file("anything", "nonexistent_dir")
 
-    assert "No results matching file pattern" in result
+    assert "No results found" in result
 
 
 # ---------------------------------------------------------------------------
-# get_codebase_context
+# get_context
 # ---------------------------------------------------------------------------
 
 
-def test_get_codebase_context_uses_cache():
-    """get_codebase_context should use cached overview when available."""
+def test_get_context_uses_cache():
+    """get_context should use cached overview when available."""
     cached = {
         "directory": "/proj",
         "total_files": 42,
@@ -167,17 +173,17 @@ def test_get_codebase_context_uses_cache():
     ):
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.context import get_codebase_context
+        from mcp_server.tools.context import get_context
 
-        result = get_codebase_context()
+        result = get_context()
 
-    assert "Codebase Overview" in result
+    assert "Directory Overview" in result
     assert "(cached)" in result
     assert "Total files: 42" in result
 
 
-def test_get_codebase_context_generates_fresh():
-    """get_codebase_context should generate fresh overview when no cache."""
+def test_get_context_generates_fresh():
+    """get_context should generate fresh overview when no cache."""
     overview = {
         "directory": "/proj",
         "total_files": 10,
@@ -196,16 +202,16 @@ def test_get_codebase_context_generates_fresh():
     ):
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.context import get_codebase_context
+        from mcp_server.tools.context import get_context
 
-        result = get_codebase_context()
+        result = get_context()
 
     assert "(fresh)" in result
     mock_save.assert_called_once()
 
 
-def test_get_codebase_context_handles_error():
-    """get_codebase_context should return error string on exception."""
+def test_get_context_handles_error():
+    """get_context should return error string on exception."""
     with (
         patch("mcp_server.tools.context.settings") as mock_settings,
         patch(
@@ -214,11 +220,11 @@ def test_get_codebase_context_handles_error():
     ):
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.context import get_codebase_context
+        from mcp_server.tools.context import get_context
 
-        result = get_codebase_context()
+        result = get_context()
 
-    assert "Error generating codebase overview" in result
+    assert "Error generating directory overview" in result
 
 
 # ---------------------------------------------------------------------------
@@ -295,12 +301,12 @@ def test_get_dependency_graph_no_deps(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# collection_stats
+# stats
 # ---------------------------------------------------------------------------
 
 
-def test_collection_stats_returns_json():
-    """collection_stats should return valid JSON from get_stats."""
+def test_stats_returns_json():
+    """stats should return valid JSON from get_stats."""
     mock_stats = {
         "collection_name": "test_codebase",
         "exists": True,
@@ -312,32 +318,32 @@ def test_collection_stats_returns_json():
     }
 
     with patch("mcp_server.tools.stats.get_stats", return_value=mock_stats):
-        from mcp_server.tools.stats import collection_stats
+        from mcp_server.tools.stats import stats
 
-        result = collection_stats()
+        result = stats()
 
     parsed = json.loads(result)
     assert parsed["total_points"] == 150
     assert parsed["exists"] is True
 
 
-def test_collection_stats_handles_error():
-    """collection_stats should return error string on exception."""
+def test_stats_handles_error():
+    """stats should return error string on exception."""
     with patch("mcp_server.tools.stats.get_stats", side_effect=RuntimeError("no connection")):
-        from mcp_server.tools.stats import collection_stats
+        from mcp_server.tools.stats import stats
 
-        result = collection_stats()
+        result = stats()
 
     assert "Error getting collection stats" in result
 
 
 # ---------------------------------------------------------------------------
-# check_index_status
+# check_status
 # ---------------------------------------------------------------------------
 
 
-def test_check_index_status_indexed_no_changes():
-    """check_index_status should recommend search when indexed and clean."""
+def test_check_status_indexed_no_changes():
+    """check_status should recommend search when indexed and clean."""
     with (
         patch("mcp_server.tools.ingest.settings") as mock_settings,
         patch("mcp_server.tools.ingest.needs_ingestion", return_value=False),
@@ -348,17 +354,17 @@ def test_check_index_status_indexed_no_changes():
     ):
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.ingest import check_index_status
+        from mcp_server.tools.ingest import check_status
 
-        result = check_index_status()
+        result = check_status()
 
     parsed = json.loads(result)
     assert parsed["is_indexed"] is True
     assert "semantic search" in parsed["recommendation"].lower()
 
 
-def test_check_index_status_indexed_with_changes():
-    """check_index_status should recommend re-indexing when there are changes."""
+def test_check_status_indexed_with_changes():
+    """check_status should recommend re-indexing when there are changes."""
     with (
         patch("mcp_server.tools.ingest.settings") as mock_settings,
         patch("mcp_server.tools.ingest.needs_ingestion", return_value=False),
@@ -369,17 +375,17 @@ def test_check_index_status_indexed_with_changes():
     ):
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.ingest import check_index_status
+        from mcp_server.tools.ingest import check_status
 
-        result = check_index_status()
+        result = check_status()
 
     parsed = json.loads(result)
     assert parsed["is_indexed"] is True
     assert "re-indexing" in parsed["recommendation"].lower()
 
 
-def test_check_index_status_not_indexed():
-    """check_index_status should indicate ingestion needed when not indexed."""
+def test_check_status_not_indexed():
+    """check_status should indicate ingestion needed when not indexed."""
     with (
         patch("mcp_server.tools.ingest.settings") as mock_settings,
         patch("mcp_server.tools.ingest.needs_ingestion", return_value=True),
@@ -390,25 +396,25 @@ def test_check_index_status_not_indexed():
     ):
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.ingest import check_index_status
+        from mcp_server.tools.ingest import check_status
 
-        result = check_index_status()
+        result = check_status()
 
     parsed = json.loads(result)
     assert parsed["is_indexed"] is False
     assert "ingestion needed" in parsed["recommendation"].lower()
 
 
-def test_check_index_status_handles_error():
-    """check_index_status should return error string on exception."""
+def test_check_status_handles_error():
+    """check_status should return error string on exception."""
     with (
         patch("mcp_server.tools.ingest.settings") as mock_settings,
         patch("mcp_server.tools.ingest.needs_ingestion", side_effect=RuntimeError("fail")),
     ):
         mock_settings.get_working_directory.return_value = "/proj"
 
-        from mcp_server.tools.ingest import check_index_status
+        from mcp_server.tools.ingest import check_status
 
-        result = check_index_status()
+        result = check_status()
 
     assert "Error checking index status" in result

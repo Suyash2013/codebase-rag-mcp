@@ -8,7 +8,7 @@ import pytest
 
 def test_factory_creates_ollama():
     """Factory should create OllamaProvider for 'ollama' setting."""
-    with patch.dict(os.environ, {"RAG_EMBEDDING_PROVIDER": "ollama"}):
+    with patch.dict(os.environ, {"OMNI_RAG_EMBEDDING_PROVIDER": "ollama"}):
         from config.settings import Settings
 
         with patch("mcp_server.embeddings.factory.settings", Settings()):
@@ -21,7 +21,7 @@ def test_factory_creates_ollama():
 
 def test_factory_creates_onnx():
     """Factory should create OnnxLocalProvider for 'onnx' setting."""
-    with patch.dict(os.environ, {"RAG_EMBEDDING_PROVIDER": "onnx"}):
+    with patch.dict(os.environ, {"OMNI_RAG_EMBEDDING_PROVIDER": "onnx"}):
         from config.settings import Settings
 
         with patch("mcp_server.embeddings.factory.settings", Settings()):
@@ -37,8 +37,8 @@ def test_factory_openai_requires_key():
     with patch.dict(
         os.environ,
         {
-            "RAG_EMBEDDING_PROVIDER": "openai",
-            "RAG_OPENAI_API_KEY": "",
+            "OMNI_RAG_EMBEDDING_PROVIDER": "openai",
+            "OMNI_RAG_OPENAI_API_KEY": "",
         },
     ):
         from config.settings import Settings
@@ -58,8 +58,8 @@ def test_factory_voyage_requires_key():
     with patch.dict(
         os.environ,
         {
-            "RAG_EMBEDDING_PROVIDER": "voyage",
-            "RAG_VOYAGE_API_KEY": "",
+            "OMNI_RAG_EMBEDDING_PROVIDER": "voyage",
+            "OMNI_RAG_VOYAGE_API_KEY": "",
         },
     ):
         from config.settings import Settings
@@ -76,7 +76,7 @@ def test_factory_voyage_requires_key():
 
 def test_factory_unknown_provider():
     """Factory should raise for unknown provider."""
-    with patch.dict(os.environ, {"RAG_EMBEDDING_PROVIDER": "nonexistent"}):
+    with patch.dict(os.environ, {"OMNI_RAG_EMBEDDING_PROVIDER": "nonexistent"}):
         from config.settings import Settings
 
         with patch("mcp_server.embeddings.factory.settings", Settings()):

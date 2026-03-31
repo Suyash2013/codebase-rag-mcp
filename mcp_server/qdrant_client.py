@@ -8,6 +8,7 @@ from qdrant_client.http.models import (
     Distance,
     FieldCondition,
     Filter,
+    MatchText,
     MatchValue,
     PointStruct,
     VectorParams,
@@ -15,7 +16,7 @@ from qdrant_client.http.models import (
 
 from config.settings import settings
 
-log = logging.getLogger("codebase-rag-mcp")
+log = logging.getLogger("omni-rag")
 
 _client: QdrantClient | None = None
 
@@ -97,25 +98,25 @@ def upsert_chunks(
 ) -> int:
     """Store embedded chunks in Qdrant.
 
-    Each chunk dict must have: id, text, file_path, directory, chunk_index, ingested_at
+    Each chunk dict must have: id, text, file_path, directory
+    All other keys are stored in the payload.
     Returns the number of points upserted.
     """
     client = get_client()
 
-    points = [
-        PointStruct(
-            id=chunk["id"],
-            vector=embedding,
-            payload={
-                "text": chunk["text"],
-                "file_path": chunk["file_path"],
-                "directory": chunk["directory"],
-                "chunk_index": chunk["chunk_index"],
-                "ingested_at": chunk["ingested_at"],
-            },
+    points = []
+    for chunk, embedding in zip(chunks, embeddings, strict=False):
+        # Everything but the vector and id goes into payload
+        payload = dict(chunk)
+        cid = payload.pop("id")
+
+        points.append(
+            PointStruct(
+                id=cid,
+                vector=embedding,
+                payload=payload,
+            )
         )
-        for chunk, embedding in zip(chunks, embeddings, strict=False)
-    ]
 
     # Upsert in batches of 100
     batch_size = 100
@@ -128,15 +129,15 @@ def upsert_chunks(
     return total
 
 
-def search(
+def search_chunks(
     query_embedding: list[float],
-    n_results: int,
+    limit: int,
     directory_filter: str | None = None,
     file_pattern: str | None = None,
 ) -> list[dict]:
     """Query Qdrant with optional directory and file pattern filters.
 
-    Returns list of dicts with keys: text, file_path, score, directory.
+    Returns list of dicts with keys: id, text, file_path, score, directory, and other payload fields.
     """
     client = get_client()
 
@@ -145,38 +146,23 @@ def search(
         must_conditions.append(
             FieldCondition(key="directory", match=MatchValue(value=directory_filter))
         )
+    if file_pattern:
+        must_conditions.append(FieldCondition(key="file_path", match=MatchText(text=file_pattern)))
 
     query_filter = Filter(must=must_conditions) if must_conditions else None  # type: ignore[arg-type]
-
-    # If file_pattern is set, fetch extra results and filter client-side
-    fetch_n = n_results * 5 if file_pattern else n_results
 
     response = client.query_points(
         collection_name=settings.qdrant_collection,
         query=query_embedding,
         query_filter=query_filter,
-        limit=fetch_n,
+        limit=limit,
     )
 
     hits = []
     for point in response.points:
         payload = point.payload or {}
-        file_path = payload.get("file_path", "unknown")
-
-        if file_pattern and file_pattern.lower() not in file_path.lower():
-            continue
-
-        hits.append(
-            {
-                "text": payload.get("text", ""),
-                "file_path": file_path,
-                "score": point.score,
-                "directory": payload.get("directory", ""),
-            }
-        )
-
-        if len(hits) >= n_results:
-            break
+        hit = {"id": str(point.id), "score": point.score, **payload}
+        hits.append(hit)
 
     return hits
 
@@ -217,40 +203,55 @@ def get_stats() -> dict:
 def delete_directory_points(directory: str) -> int:
     """Delete all points belonging to a directory. Returns count deleted."""
     client = get_client()
-    dir_filter = Filter(must=[FieldCondition(key="directory", match=MatchValue(value=directory))])
-    # Get accurate count before deletion
-    count_result = client.count(
+    # Get count before deletion
+    points, _ = client.scroll(
         collection_name=settings.qdrant_collection,
-        count_filter=dir_filter,
-        exact=True,
+        scroll_filter=Filter(
+            must=[FieldCondition(key="directory", match=MatchValue(value=directory))]
+        ),
+        limit=1,
     )
-    count = count_result.count
-    if count == 0:
+    if not points:
         return 0
 
     client.delete(
         collection_name=settings.qdrant_collection,
-        points_selector=dir_filter,
+        points_selector=Filter(
+            must=[FieldCondition(key="directory", match=MatchValue(value=directory))]
+        ),
     )
-    return count
+    return -1  # Qdrant doesn't return count; caller can re-check if needed
 
 
-def delete_file_points(file_path: str) -> int:
-    """Delete all points belonging to a specific file. Returns count deleted."""
+def delete_file_points(file_path: str, directory: str) -> int:
+    """Delete all points belonging to a specific file. Returns count deleted.
+
+    Args:
+        file_path: Relative path to the file (e.g. 'mcp_server/ingestion.py').
+        directory: Directory the file belongs to (used to scope the filter).
+    """
     client = get_client()
-    file_filter = Filter(must=[FieldCondition(key="file_path", match=MatchValue(value=file_path))])
-    # Get accurate count before deletion
-    count_result = client.count(
+    # Check whether any points exist before issuing a delete
+    points, _ = client.scroll(
         collection_name=settings.qdrant_collection,
-        count_filter=file_filter,
-        exact=True,
+        scroll_filter=Filter(
+            must=[
+                FieldCondition(key="directory", match=MatchValue(value=directory)),
+                FieldCondition(key="file_path", match=MatchValue(value=file_path)),
+            ]
+        ),
+        limit=1,
     )
-    count = count_result.count
-    if count == 0:
+    if not points:
         return 0
 
     client.delete(
         collection_name=settings.qdrant_collection,
-        points_selector=file_filter,
+        points_selector=Filter(
+            must=[
+                FieldCondition(key="directory", match=MatchValue(value=directory)),
+                FieldCondition(key="file_path", match=MatchValue(value=file_path)),
+            ]
+        ),
     )
-    return count
+    return -1  # Qdrant doesn't return count; caller can re-check if needed

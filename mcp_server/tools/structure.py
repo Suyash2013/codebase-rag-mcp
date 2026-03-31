@@ -9,21 +9,7 @@ from mcp_server.analysis.structure import (
     extract_signatures,
 )
 
-# Directories to skip
-SKIP_DIRS = {
-    "node_modules",
-    "__pycache__",
-    "venv",
-    ".venv",
-    "dist",
-    "build",
-    ".git",
-    ".codebase-rag",
-    ".idea",
-    ".vscode",
-    "target",
-    ".gradle",
-}
+# Directories to skip — driven by settings.skip_directories
 
 
 def get_file_signatures(file_pattern: str = "") -> str:
@@ -48,7 +34,8 @@ def get_file_signatures(file_pattern: str = "") -> str:
         results = []
 
         for root, dirs, files in os.walk(directory):
-            dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+            skip_dirs = set(settings.skip_directories)
+            dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith(".")]
             for f in files:
                 fp = Path(root) / f
                 rel_path = str(fp.relative_to(base))

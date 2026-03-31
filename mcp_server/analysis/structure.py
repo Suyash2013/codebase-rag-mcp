@@ -6,23 +6,11 @@ import os
 import re
 from pathlib import Path
 
-log = logging.getLogger("codebase-rag-mcp")
+from config.settings import settings
 
-# Directories to skip during analysis
-SKIP_DIRS = {
-    "node_modules",
-    "__pycache__",
-    "venv",
-    ".venv",
-    "dist",
-    "build",
-    ".git",
-    ".codebase-rag",
-    ".idea",
-    ".vscode",
-    "target",
-    ".gradle",
-}
+log = logging.getLogger("omni-rag")
+
+# Directories to skip during analysis — driven by settings.skip_directories
 
 
 def extract_signatures(file_path: str) -> list[dict]:
@@ -35,21 +23,31 @@ def extract_signatures(file_path: str) -> list[dict]:
     if not path.exists():
         return []
 
+    error_count = 0
+
     try:
         text = path.read_text(encoding="utf-8", errors="ignore")
-    except Exception:
+    except Exception as e:
+        log.warning("Failed to read file for signature extraction %s: %s", file_path, e)
+        error_count += 1
+        if error_count > 0:
+            log.info("Signature extraction completed with %d warnings", error_count)
         return []
 
     if path.suffix == ".py":
-        return _extract_python_signatures(text)
+        result = _extract_python_signatures(text)
     elif path.suffix in {".js", ".ts", ".tsx", ".jsx"}:
-        return _extract_js_ts_signatures(text)
+        result = _extract_js_ts_signatures(text)
     elif path.suffix in {".go"}:
-        return _extract_go_signatures(text)
+        result = _extract_go_signatures(text)
     elif path.suffix in {".java", ".kt", ".kts"}:
-        return _extract_jvm_signatures(text)
+        result = _extract_jvm_signatures(text)
     else:
-        return _extract_generic_signatures(text)
+        result = _extract_generic_signatures(text)
+
+    if error_count > 0:
+        log.info("Signature extraction completed with %d warnings", error_count)
+    return result
 
 
 def _extract_python_signatures(source: str) -> list[dict]:
@@ -274,19 +272,29 @@ def extract_imports(file_path: str) -> list[str]:
     if not path.exists():
         return []
 
+    error_count = 0
+
     try:
         text = path.read_text(encoding="utf-8", errors="ignore")
-    except Exception:
+    except Exception as e:
+        log.warning("Failed to read file for import extraction %s: %s", file_path, e)
+        error_count += 1
+        if error_count > 0:
+            log.info("Import extraction completed with %d warnings", error_count)
         return []
 
     if path.suffix == ".py":
-        return _extract_python_imports(text)
+        result = _extract_python_imports(text)
     elif path.suffix in {".js", ".ts", ".tsx", ".jsx"}:
-        return _extract_js_imports(text)
+        result = _extract_js_imports(text)
     elif path.suffix == ".go":
-        return _extract_go_imports(text)
+        result = _extract_go_imports(text)
     else:
-        return []
+        result = []
+
+    if error_count > 0:
+        log.info("Import extraction completed with %d warnings", error_count)
+    return result
 
 
 def _extract_python_imports(source: str) -> list[str]:
@@ -345,9 +353,10 @@ def build_dependency_graph(
     graph = {}
 
     # Collect all project files
+    skip_dirs = set(settings.skip_directories)
     project_modules = set()
     for root, dirs, files in os.walk(directory):
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+        dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith(".")]
         for f in files:
             fp = Path(root) / f
             rel = str(fp.relative_to(base))

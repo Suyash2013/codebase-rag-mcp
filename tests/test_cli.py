@@ -16,9 +16,7 @@ def test_find_claude_config_returns_path():
 def test_setup_already_registered(tmp_path, capsys):
     """Should skip if already registered."""
     config_file = tmp_path / ".claude.json"
-    config_file.write_text(
-        json.dumps({"mcpServers": {"codebase-rag": {"command": "codebase-rag"}}})
-    )
+    config_file.write_text(json.dumps({"mcpServers": {"omni-rag": {"command": "omni-rag"}}}))
 
     with patch("mcp_server.cli._find_claude_config", return_value=config_file):
         setup()
@@ -34,7 +32,7 @@ def test_setup_registers_new(tmp_path, capsys):
 
     with (
         patch("mcp_server.cli._find_claude_config", return_value=config_file),
-        patch("shutil.which", return_value="/usr/bin/codebase-rag"),
+        patch("shutil.which", return_value="/usr/bin/omni-rag"),
     ):
         setup()
 
@@ -43,7 +41,7 @@ def test_setup_registers_new(tmp_path, capsys):
 
     # Verify config was written
     config = json.loads(config_file.read_text())
-    assert "codebase-rag" in config["mcpServers"]
+    assert "omni-rag" in config["mcpServers"]
 
 
 def test_setup_creates_config_if_missing(tmp_path, capsys):
@@ -52,13 +50,13 @@ def test_setup_creates_config_if_missing(tmp_path, capsys):
 
     with (
         patch("mcp_server.cli._find_claude_config", return_value=config_file),
-        patch("shutil.which", return_value="/usr/bin/codebase-rag"),
+        patch("shutil.which", return_value="/usr/bin/omni-rag"),
     ):
         setup()
 
     assert config_file.exists()
     config = json.loads(config_file.read_text())
-    assert "codebase-rag" in config["mcpServers"]
+    assert "omni-rag" in config["mcpServers"]
 
 
 def test_setup_no_config_prints_manual(capsys):

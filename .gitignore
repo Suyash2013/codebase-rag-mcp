@@ -20,6 +20,7 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .mcp.json
+.rag-mcp/
 
 .gemini/
 gha-creds-*.json

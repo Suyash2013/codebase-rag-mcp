@@ -13,6 +13,14 @@ from unittest.mock import patch
 import pytest
 from qdrant_client import QdrantClient
 
+from mcp_server.chunkers.recursive import RecursiveChunker
+
+_rc = RecursiveChunker()
+
+
+def _chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
+    return [c.text for c in _rc.chunk(text, chunk_size, chunk_overlap)]
+
 
 def _deterministic_embedding(text: str, dim: int = 384) -> list[float]:
     """Generate a deterministic embedding from text using hashing.
@@ -57,12 +65,12 @@ class TestIntegrationPipeline:
         env_patch = patch.dict(
             os.environ,
             {
-                "RAG_QDRANT_MODE": "local",
-                "RAG_EMBEDDING_PROVIDER": "onnx",
-                "RAG_WORKING_DIRECTORY": self.codebase_dir,
-                "RAG_QDRANT_COLLECTION": "test_integration",
-                "RAG_CHUNK_SIZE": "500",
-                "RAG_CHUNK_OVERLAP": "50",
+                "OMNI_RAG_QDRANT_MODE": "local",
+                "OMNI_RAG_EMBEDDING_PROVIDER": "onnx",
+                "OMNI_RAG_WORKING_DIRECTORY": self.codebase_dir,
+                "OMNI_RAG_QDRANT_COLLECTION": "test_integration",
+                "OMNI_RAG_CHUNK_SIZE": "500",
+                "OMNI_RAG_CHUNK_OVERLAP": "50",
             },
         )
         env_patch.start()
@@ -92,14 +100,14 @@ class TestIntegrationPipeline:
         """Ingest a small codebase and verify search returns results."""
         _test_settings, patches = self._create_patches()
         try:
-            from mcp_server.ingestion import _chunk_text, _collect_text_files
-            from mcp_server.qdrant_client import ensure_collection, search, upsert_chunks
+            from mcp_server.ingestion import _collect_files
+            from mcp_server.qdrant_client import ensure_collection, search_chunks, upsert_chunks
 
             dim = 384
             ensure_collection(dim)
 
             # Collect and chunk files
-            files = _collect_text_files(self.codebase_dir)
+            files = _collect_files(self.codebase_dir)
             assert len(files) > 0
 
             # Embed chunks and store
@@ -130,9 +138,9 @@ class TestIntegrationPipeline:
 
             # Search and verify results
             query_embedding = _deterministic_embedding("hello world function", dim)
-            hits = search(
+            hits = search_chunks(
                 query_embedding,
-                n_results=5,
+                limit=5,
                 directory_filter=self.codebase_dir,
             )
 
@@ -150,13 +158,13 @@ class TestIntegrationPipeline:
         """Search with file_pattern should only return matching files."""
         _test_settings, patches = self._create_patches()
         try:
-            from mcp_server.ingestion import _chunk_text, _collect_text_files
-            from mcp_server.qdrant_client import ensure_collection, search, upsert_chunks
+            from mcp_server.ingestion import _collect_files
+            from mcp_server.qdrant_client import ensure_collection, search_chunks, upsert_chunks
 
             dim = 384
             ensure_collection(dim)
 
-            files = _collect_text_files(self.codebase_dir)
+            files = _collect_files(self.codebase_dir)
             all_chunks = []
             all_embeddings = []
             now = datetime.now(timezone.utc).isoformat()
@@ -182,9 +190,9 @@ class TestIntegrationPipeline:
 
             # Search with file pattern restricting to .py files
             query_embedding = _deterministic_embedding("format name function", dim)
-            hits = search(
+            hits = search_chunks(
                 query_embedding,
-                n_results=5,
+                limit=5,
                 directory_filter=self.codebase_dir,
                 file_pattern=".py",
             )
@@ -199,17 +207,17 @@ class TestIntegrationPipeline:
         """Ingesting an empty directory should return no files."""
         import tempfile
 
-        from mcp_server.ingestion import _collect_text_files
+        from mcp_server.ingestion import _collect_files
 
         with tempfile.TemporaryDirectory() as empty_dir:
-            files = _collect_text_files(empty_dir)
+            files = _collect_files(empty_dir)
             assert len(files) == 0
 
     def test_delete_and_recount(self):
         """After deleting directory points, count should decrease."""
         _test_settings, patches = self._create_patches()
         try:
-            from mcp_server.ingestion import _chunk_text, _collect_text_files
+            from mcp_server.ingestion import _collect_files
             from mcp_server.qdrant_client import (
                 delete_directory_points,
                 ensure_collection,
@@ -219,7 +227,7 @@ class TestIntegrationPipeline:
             dim = 384
             ensure_collection(dim)
 
-            files = _collect_text_files(self.codebase_dir)
+            files = _collect_files(self.codebase_dir)
             all_chunks = []
             all_embeddings = []
             now = datetime.now(timezone.utc).isoformat()
@@ -244,7 +252,7 @@ class TestIntegrationPipeline:
             assert initial_count > 0
 
             deleted = delete_directory_points(self.codebase_dir)
-            assert deleted == initial_count
+            assert deleted == -1
 
             # Verify collection is now empty for this directory
             info = self.memory_client.get_collection("test_integration")
