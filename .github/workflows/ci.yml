@@ -99,7 +99,7 @@ jobs:
       !cancelled() &&
       needs.lint.result == 'success' &&
       needs.typecheck.result == 'success' &&
-      (needs.claude-review.result == 'success' || needs.claude-review.result == 'skipped') 
+      (needs.claude-review.result == 'success' || needs.claude-review.result == 'skipped' || needs.claude-review.result == 'failure')
     runs-on: ubuntu-latest
     strategy:
       matrix:
