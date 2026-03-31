@@ -7,6 +7,7 @@ log = logging.getLogger("omni-rag")
 
 try:
     import fitz  # PyMuPDF
+
     HAS_PYMUPDF = True
 except ImportError:
     HAS_PYMUPDF = False
@@ -25,7 +26,9 @@ class PdfExtractor(ExtractorBase):
         if not HAS_PYMUPDF:
             msg = f"Skipping {path}: PDF support not installed. Run 'pip install pymupdf'"
             log.warning(msg)
-            return ExtractionResult(text=msg, content_type="document", metadata={"error": "missing_dependency"})
+            return ExtractionResult(
+                text=msg, content_type="document", metadata={"error": "missing_dependency"}
+            )
 
         try:
             doc = fitz.open(str(path))
@@ -33,7 +36,11 @@ class PdfExtractor(ExtractorBase):
             for page in doc:
                 text += page.get_text()
             doc.close()
-            return ExtractionResult(text=text, content_type="document", metadata={"pages": len(doc)})
+            return ExtractionResult(
+                text=text, content_type="document", metadata={"pages": len(doc)}
+            )
         except Exception as e:
             log.warning("Failed to extract PDF %s: %s", path, e)
-            return ExtractionResult(text=str(e), content_type="document", metadata={"error": str(e)})
+            return ExtractionResult(
+                text=str(e), content_type="document", metadata={"error": str(e)}
+            )

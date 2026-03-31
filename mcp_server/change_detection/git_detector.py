@@ -28,7 +28,10 @@ class GitDetector(ChangeDetector):
             try:
                 result = subprocess.run(
                     ["git", "diff", "--name-only", last_commit, current_commit],
-                    capture_output=True, text=True, cwd=directory, timeout=30
+                    capture_output=True,
+                    text=True,
+                    cwd=directory,
+                    timeout=30,
                 )
                 if result.returncode == 0:
                     for f in result.stdout.splitlines():
@@ -45,7 +48,10 @@ class GitDetector(ChangeDetector):
         try:
             result = subprocess.run(
                 ["git", "status", "--porcelain"],
-                capture_output=True, text=True, cwd=directory, timeout=30
+                capture_output=True,
+                text=True,
+                cwd=directory,
+                timeout=30,
             )
             if result.returncode == 0:
                 for line in result.stdout.splitlines():
@@ -69,7 +75,7 @@ class GitDetector(ChangeDetector):
             has_changes=has_changes,
             changed_files=changed,
             deleted_files=deleted,
-            details=f"{len(changed)} changed, {len(deleted)} deleted since {last_commit[:8]}"
+            details=f"{len(changed)} changed, {len(deleted)} deleted since {last_commit[:8]}",
         )
 
     def _should_skip(self, path: str) -> bool:
@@ -96,7 +102,10 @@ class GitDetector(ChangeDetector):
         try:
             result = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
-                capture_output=True, text=True, cwd=directory, timeout=10
+                capture_output=True,
+                text=True,
+                cwd=directory,
+                timeout=10,
             )
             return result.stdout.strip() if result.returncode == 0 else None
         except Exception:

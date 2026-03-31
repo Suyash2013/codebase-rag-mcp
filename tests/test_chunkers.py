@@ -30,7 +30,6 @@ class TestRecursiveChunker:
 
     def test_metadata_passed_through(self):
         chunks = self.chunker.chunk(
-            "hello", chunk_size=1000, chunk_overlap=0,
-            metadata={"file_path": "test.txt"}
+            "hello", chunk_size=1000, chunk_overlap=0, metadata={"file_path": "test.txt"}
         )
         assert chunks[0].metadata["file_path"] == "test.txt"

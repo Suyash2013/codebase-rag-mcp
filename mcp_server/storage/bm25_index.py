@@ -89,8 +89,10 @@ class BM25Index:
         data_path = Path(self.directory) / DATA_DIR
         data_path.mkdir(parents=True, exist_ok=True)
 
-        corpus = [{"id": cid, "tokens": tokens}
-                  for cid, tokens in zip(self._corpus_ids, self._corpus_tokens, strict=False)]
+        corpus = [
+            {"id": cid, "tokens": tokens}
+            for cid, tokens in zip(self._corpus_ids, self._corpus_tokens, strict=False)
+        ]
         (data_path / "bm25_corpus.json").write_text(json.dumps(corpus))
 
     def load(self) -> bool:

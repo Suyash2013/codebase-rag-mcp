@@ -17,9 +17,17 @@ class TextExtractor(ExtractorBase):
         # These are handled by specific extractors if they exist,
         # but as a fallback we can accept them as plain text.
         return {
-            "Dockerfile", "Makefile", "CMakeLists.txt", "Jenkinsfile",
-            "Procfile", "Vagrantfile", "Gemfile", "Rakefile",
-            ".gitignore", ".dockerignore", ".editorconfig",
+            "Dockerfile",
+            "Makefile",
+            "CMakeLists.txt",
+            "Jenkinsfile",
+            "Procfile",
+            "Vagrantfile",
+            "Gemfile",
+            "Rakefile",
+            ".gitignore",
+            ".dockerignore",
+            ".editorconfig",
         }
 
     def extract(self, path: Path) -> ExtractionResult:

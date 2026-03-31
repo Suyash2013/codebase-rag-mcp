@@ -1,6 +1,5 @@
 """Tests for ingestion engine."""
 
-
 from mcp_server.chunkers.recursive import RecursiveChunker
 from mcp_server.ingestion import (
     _collect_files,
@@ -168,8 +167,8 @@ def test_chunk_text_no_overlap():
 
 def test_chunk_text_double_newline_separator():
     """Text split on \\n\\n should produce chunks bounded by paragraphs."""
-    para_a = "Word " * 15   # ~75 chars
-    para_b = "Text " * 15   # ~75 chars
+    para_a = "Word " * 15  # ~75 chars
+    para_b = "Text " * 15  # ~75 chars
     text = para_a.strip() + "\n\n" + para_b.strip()
     chunks = _chunk_text(text, chunk_size=100, chunk_overlap=0)
     # Should produce exactly 2 chunks, one per paragraph
@@ -180,8 +179,8 @@ def test_chunk_text_double_newline_separator():
 
 def test_chunk_text_newline_separator():
     """Text split on single \\n (no \\n\\n present) should use newline boundary."""
-    line_a = "Line_A " * 10   # ~70 chars
-    line_b = "Line_B " * 10   # ~70 chars
+    line_a = "Line_A " * 10  # ~70 chars
+    line_b = "Line_B " * 10  # ~70 chars
     text = line_a.strip() + "\n" + line_b.strip()
     chunks = _chunk_text(text, chunk_size=90, chunk_overlap=0)
     assert len(chunks) == 2
@@ -191,8 +190,8 @@ def test_chunk_text_newline_separator():
 
 def test_chunk_text_overlap_correctness():
     """Each chunk after the first should start with the tail of the previous chunk."""
-    para_a = "Alpha " * 15   # ~90 chars
-    para_b = "Beta " * 15    # ~75 chars
+    para_a = "Alpha " * 15  # ~90 chars
+    para_b = "Beta " * 15  # ~75 chars
     text = para_a.strip() + "\n\n" + para_b.strip()
     overlap = 20
     chunks = _chunk_text(text, chunk_size=110, chunk_overlap=overlap)
@@ -200,7 +199,7 @@ def test_chunk_text_overlap_correctness():
     for i in range(1, len(chunks)):
         expected_prefix = chunks[i - 1][-overlap:]
         assert chunks[i].startswith(expected_prefix), (
-            f"Chunk {i} does not start with tail of chunk {i-1}. "
+            f"Chunk {i} does not start with tail of chunk {i - 1}. "
             f"Expected prefix: {expected_prefix!r}, got start: {chunks[i][:overlap]!r}"
         )
 
@@ -208,7 +207,7 @@ def test_chunk_text_overlap_correctness():
 def test_chunk_text_space_separator():
     """Text with no newlines falls back to space separator."""
     # Single long line, no newlines
-    words = ["word"] * 40   # "word word word ..." ~200 chars
+    words = ["word"] * 40  # "word word word ..." ~200 chars
     text = " ".join(words)
     chunks = _chunk_text(text, chunk_size=50, chunk_overlap=0)
     assert len(chunks) > 1
@@ -237,7 +236,7 @@ def test_chunk_text_hard_split_base_case():
 def test_chunk_text_multiple_paragraphs_overlap():
     """Multiple paragraphs with overlap: verify chunk count and overlap prefix."""
     # Build 4 paragraphs each ~80 chars wide, chunk_size=100 so each para is its own chunk
-    paragraphs = [f"Para{i} " * 13 for i in range(4)]   # each ~91 chars
+    paragraphs = [f"Para{i} " * 13 for i in range(4)]  # each ~91 chars
     text = "\n\n".join(p.strip() for p in paragraphs)
     overlap = 15
     chunks = _chunk_text(text, chunk_size=100, chunk_overlap=overlap)

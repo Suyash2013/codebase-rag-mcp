@@ -124,7 +124,9 @@ def test_search_by_file_passes_pattern():
     mock_search.assert_called_once()
     call_kwargs = mock_search.call_args
     # search_chunks(query_embedding, limit, directory_filter, file_pattern)
-    assert call_kwargs[1]["file_pattern"] == "models" or (len(call_kwargs[0]) > 3 and call_kwargs[0][3] == "models")
+    assert call_kwargs[1]["file_pattern"] == "models" or (
+        len(call_kwargs[0]) > 3 and call_kwargs[0][3] == "models"
+    )
     assert "models/user.py" in result
 
 

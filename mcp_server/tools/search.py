@@ -110,10 +110,7 @@ def search_by_file(
 
         query_vector = get_embedding(query)
         results = search_chunks(
-            query_vector,
-            limit=n,
-            directory_filter=directory,
-            file_pattern=file_pattern
+            query_vector, limit=n, directory_filter=directory, file_pattern=file_pattern
         )
 
         if not results:

@@ -33,7 +33,9 @@ def _make_file_list(tmp_path: Path, names: list[str]) -> list[tuple[Path, str]]:
 def test_embed_and_chunk_files_returns_three_tuple(mock_embed, tmp_path):
     """_embed_and_chunk_files must return (chunks, embeddings, processed_files)."""
     files = _make_file_list(tmp_path, ["a.py", "b.py"])
-    result = _embed_and_chunk_files(files, str(tmp_path), timeout_seconds=3600, start_time=time.time())
+    result = _embed_and_chunk_files(
+        files, str(tmp_path), timeout_seconds=3600, start_time=time.time()
+    )
     assert isinstance(result, tuple)
     assert len(result) == 3
     chunks, embeddings, processed = result
@@ -77,7 +79,17 @@ def test_embed_and_chunk_files_timeout_stops_early(mock_embed, tmp_path):
 @patch(
     "mcp_server.ingestion._embed_and_chunk_files",
     return_value=(
-        [{"id": "u1", "text": "x", "file_path": "a.py", "directory": "", "chunk_index": 0, "content_type": "text/x-python", "ingested_at": ""}],
+        [
+            {
+                "id": "u1",
+                "text": "x",
+                "file_path": "a.py",
+                "directory": "",
+                "chunk_index": 0,
+                "content_type": "text/x-python",
+                "ingested_at": "",
+            }
+        ],
         [[0.1, 0.2]],
         ["a.py"],
     ),
@@ -107,9 +119,35 @@ def test_ingest_directory_two_phase_order(
     ingest_directory(str(tmp_path))
 
     expected_calls = [
-        call.upsert([{"id": "u1", "text": "x", "file_path": "a.py", "directory": "", "chunk_index": 0, "content_type": "text/x-python", "ingested_at": ""}], [[0.1, 0.2]]),
+        call.upsert(
+            [
+                {
+                    "id": "u1",
+                    "text": "x",
+                    "file_path": "a.py",
+                    "directory": "",
+                    "chunk_index": 0,
+                    "content_type": "text/x-python",
+                    "ingested_at": "",
+                }
+            ],
+            [[0.1, 0.2]],
+        ),
         call.delete("a.py", str(tmp_path)),
-        call.upsert([{"id": "u1", "text": "x", "file_path": "a.py", "directory": "", "chunk_index": 0, "content_type": "text/x-python", "ingested_at": ""}], [[0.1, 0.2]]),
+        call.upsert(
+            [
+                {
+                    "id": "u1",
+                    "text": "x",
+                    "file_path": "a.py",
+                    "directory": "",
+                    "chunk_index": 0,
+                    "content_type": "text/x-python",
+                    "ingested_at": "",
+                }
+            ],
+            [[0.1, 0.2]],
+        ),
     ]
     # Filter to only upsert and delete calls
     actual_calls = [c for c in manager.mock_calls if c[0] in ("upsert", "delete")]
@@ -126,7 +164,17 @@ def test_ingest_directory_two_phase_order(
     "mcp_server.ingestion._embed_and_chunk_files",
     # Simulate a timeout where a.py was processed but b.py was skipped
     return_value=(
-        [{"id": "u1", "text": "x", "file_path": "a.py", "directory": "", "chunk_index": 0, "content_type": "text/x-python", "ingested_at": ""}],
+        [
+            {
+                "id": "u1",
+                "text": "x",
+                "file_path": "a.py",
+                "directory": "",
+                "chunk_index": 0,
+                "content_type": "text/x-python",
+                "ingested_at": "",
+            }
+        ],
         [[0.1, 0.2]],
         ["a.py"],
     ),
@@ -171,7 +219,17 @@ def test_ingest_directory_delete_only_processed_files(
 @patch(
     "mcp_server.ingestion._embed_and_chunk_files",
     return_value=(
-        [{"id": "u1", "text": "x", "file_path": "a.py", "directory": "", "chunk_index": 0, "content_type": "text/x-python", "ingested_at": ""}],
+        [
+            {
+                "id": "u1",
+                "text": "x",
+                "file_path": "a.py",
+                "directory": "",
+                "chunk_index": 0,
+                "content_type": "text/x-python",
+                "ingested_at": "",
+            }
+        ],
         [[0.1, 0.2]],
         ["a.py"],
     ),

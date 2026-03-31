@@ -12,6 +12,7 @@ from mcp_server.storage.hybrid import reciprocal_rank_fusion
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _chunk(chunk_id: str, text: str) -> dict:
     return {"id": chunk_id, "text": text}
 
@@ -19,6 +20,7 @@ def _chunk(chunk_id: str, text: str) -> dict:
 # ---------------------------------------------------------------------------
 # BM25Index -tokenizer
 # ---------------------------------------------------------------------------
+
 
 class TestBM25Tokenizer:
     def setup_method(self):
@@ -46,6 +48,7 @@ class TestBM25Tokenizer:
 # ---------------------------------------------------------------------------
 # BM25Index -build & basic invariants
 # ---------------------------------------------------------------------------
+
 
 class TestBM25Build:
     def setup_method(self):
@@ -80,14 +83,17 @@ class TestBM25Build:
 # BM25Index -search ranking
 # ---------------------------------------------------------------------------
 
+
 class TestBM25Search:
     def setup_method(self):
         self.idx = BM25Index(directory="/tmp")
-        self.idx.build([
-            _chunk("python", "python programming language tutorial"),
-            _chunk("java", "java programming language enterprise"),
-            _chunk("rust", "rust systems programming memory safety"),
-        ])
+        self.idx.build(
+            [
+                _chunk("python", "python programming language tutorial"),
+                _chunk("java", "java programming language enterprise"),
+                _chunk("rust", "rust systems programming memory safety"),
+            ]
+        )
 
     def test_relevant_doc_ranked_first(self):
         results = self.idx.search("rust memory")
@@ -120,14 +126,17 @@ class TestBM25Search:
 # BM25Index -IDF calculation
 # ---------------------------------------------------------------------------
 
+
 class TestBM25IDF:
     def test_idf_rare_term_higher_than_common(self):
         idx = BM25Index(directory="/tmp")
-        idx.build([
-            _chunk("a", "common word here"),
-            _chunk("b", "common term here"),
-            _chunk("c", "rare xyzzy here"),
-        ])
+        idx.build(
+            [
+                _chunk("a", "common word here"),
+                _chunk("b", "common term here"),
+                _chunk("c", "rare xyzzy here"),
+            ]
+        )
         # "common" appears in 2/3 docs; "xyzzy" appears in 1/3 docs
         assert idx._idf["xyzzy"] > idx._idf["common"]
 
@@ -143,13 +152,16 @@ class TestBM25IDF:
 # BM25Index -update
 # ---------------------------------------------------------------------------
 
+
 class TestBM25Update:
     def setup_method(self):
         self.idx = BM25Index(directory="/tmp")
-        self.idx.build([
-            _chunk("a", "hello world"),
-            _chunk("b", "goodbye world"),
-        ])
+        self.idx.build(
+            [
+                _chunk("a", "hello world"),
+                _chunk("b", "goodbye world"),
+            ]
+        )
 
     def test_add_new_doc(self):
         self.idx.update(add=[_chunk("c", "brand new content")])
@@ -186,6 +198,7 @@ class TestBM25Update:
 # BM25Index -save / load
 # ---------------------------------------------------------------------------
 
+
 class TestBM25Persistence:
     def test_save_creates_file(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -215,10 +228,12 @@ class TestBM25Persistence:
     def test_load_then_search_works(self):
         with tempfile.TemporaryDirectory() as tmp:
             idx = BM25Index(directory=tmp)
-            idx.build([
-                _chunk("py", "python programming"),
-                _chunk("js", "javascript browser"),
-            ])
+            idx.build(
+                [
+                    _chunk("py", "python programming"),
+                    _chunk("js", "javascript browser"),
+                ]
+            )
             idx.save()
 
             idx2 = BM25Index(directory=tmp)
@@ -247,6 +262,7 @@ class TestBM25Persistence:
 # BM25Index -k1 / b parameters
 # ---------------------------------------------------------------------------
 
+
 class TestBM25Parameters:
     def test_custom_k1_b(self):
         idx = BM25Index(directory="/tmp", k1=1.2, b=0.5)
@@ -257,10 +273,12 @@ class TestBM25Parameters:
         # b=0 removes document-length normalization: two docs with the same TF
         # for the query term but different total lengths should score identically.
         idx = BM25Index(directory="/tmp", k1=1.5, b=0.0)
-        idx.build([
-            _chunk("a", "python foo bar baz"),        # tf("python")=1, len=4
-            _chunk("b", "python alpha beta gamma delta"),  # tf("python")=1, len=5
-        ])
+        idx.build(
+            [
+                _chunk("a", "python foo bar baz"),  # tf("python")=1, len=4
+                _chunk("b", "python alpha beta gamma delta"),  # tf("python")=1, len=5
+            ]
+        )
         results = idx.search("python")
         scores = {r[0]: r[1] for r in results}
         # denominator = tf + k1*(1 - 0 + 0*dl/avg_dl) = tf + k1 — same for both
@@ -270,6 +288,7 @@ class TestBM25Parameters:
 # ---------------------------------------------------------------------------
 # reciprocal_rank_fusion
 # ---------------------------------------------------------------------------
+
 
 class TestReciprocalRankFusion:
     def test_returns_all_unique_ids(self):

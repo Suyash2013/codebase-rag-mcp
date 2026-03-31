@@ -12,8 +12,9 @@ class MarkdownChunker(ChunkerBase):
     def content_types(self) -> set[str]:
         return {"markdown"}
 
-    def chunk(self, text: str, chunk_size: int, chunk_overlap: int,
-              metadata: dict | None = None) -> list[Chunk]:
+    def chunk(
+        self, text: str, chunk_size: int, chunk_overlap: int, metadata: dict | None = None
+    ) -> list[Chunk]:
         if not text or not text.strip():
             return []
 
@@ -52,7 +53,7 @@ class MarkdownChunker(ChunkerBase):
 
         for match in heading_pattern.finditer(text):
             if match.start() > last_end:
-                content = text[last_end:match.start()]
+                content = text[last_end : match.start()]
                 if content.strip():
                     sections.append((last_title, content))
             last_title = match.group(2).strip()

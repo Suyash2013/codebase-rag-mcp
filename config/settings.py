@@ -13,10 +13,11 @@ log = logging.getLogger("omni-rag")
 _LEGACY_PREFIX = "RAG_"
 _NEW_PREFIX = "OMNI_RAG_"
 
+
 def _migrate_env_vars():
     for key in list(os.environ.keys()):
         if key.startswith(_LEGACY_PREFIX) and not key.startswith(_NEW_PREFIX):
-            new_key = _NEW_PREFIX + key[len(_LEGACY_PREFIX):]
+            new_key = _NEW_PREFIX + key[len(_LEGACY_PREFIX) :]
             if new_key not in os.environ:
                 os.environ[new_key] = os.environ[key]
                 warnings.warn(
@@ -24,6 +25,7 @@ def _migrate_env_vars():
                     DeprecationWarning,
                     stacklevel=2,
                 )
+
 
 _migrate_env_vars()
 

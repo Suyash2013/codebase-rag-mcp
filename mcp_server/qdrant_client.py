@@ -147,9 +147,7 @@ def search_chunks(
             FieldCondition(key="directory", match=MatchValue(value=directory_filter))
         )
     if file_pattern:
-        must_conditions.append(
-            FieldCondition(key="file_path", match=MatchText(text=file_pattern))
-        )
+        must_conditions.append(FieldCondition(key="file_path", match=MatchText(text=file_pattern)))
 
     query_filter = Filter(must=must_conditions) if must_conditions else None  # type: ignore[arg-type]
 
@@ -163,11 +161,7 @@ def search_chunks(
     hits = []
     for point in response.points:
         payload = point.payload or {}
-        hit = {
-            "id": str(point.id),
-            "score": point.score,
-            **payload
-        }
+        hit = {"id": str(point.id), "score": point.score, **payload}
         hits.append(hit)
 
     return hits

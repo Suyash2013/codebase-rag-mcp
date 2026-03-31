@@ -72,6 +72,7 @@ def test_collection_creation(memory_client):
 def test_search_chunks_returns_results(populated_client):
     """search_chunks should return matching results with scores."""
     from mcp_server.qdrant_client import ensure_collection, search_chunks
+
     with patch("mcp_server.qdrant_client.get_client", return_value=populated_client):
         ensure_collection(4)
         hits = search_chunks(
@@ -86,12 +87,11 @@ def test_search_chunks_returns_results(populated_client):
 def test_search_chunks_with_filter(populated_client):
     """search_chunks with directory filter should restrict results."""
     from mcp_server.qdrant_client import ensure_collection, search_chunks
+
     with patch("mcp_server.qdrant_client.get_client", return_value=populated_client):
         ensure_collection(4)
         hits = search_chunks(
-            query_embedding=[0.1, 0.2, 0.3, 0.4],
-            limit=10,
-            directory_filter="/test/project"
+            query_embedding=[0.1, 0.2, 0.3, 0.4], limit=10, directory_filter="/test/project"
         )
     assert len(hits) == 2
     for h in hits:
@@ -101,13 +101,10 @@ def test_search_chunks_with_filter(populated_client):
 def test_search_chunks_with_file_pattern_filter(populated_client):
     """search_chunks with file_pattern filter should restrict to matching file paths."""
     from mcp_server.qdrant_client import ensure_collection, search_chunks
+
     with patch("mcp_server.qdrant_client.get_client", return_value=populated_client):
         ensure_collection(4)
-        hits = search_chunks(
-            query_embedding=[0.1, 0.2, 0.3, 0.4],
-            limit=10,
-            file_pattern=".py"
-        )
+        hits = search_chunks(query_embedding=[0.1, 0.2, 0.3, 0.4], limit=10, file_pattern=".py")
     assert len(hits) == 1
     assert hits[0]["file_path"] == "main.py"
 

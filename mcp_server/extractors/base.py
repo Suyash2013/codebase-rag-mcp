@@ -8,6 +8,7 @@ from pathlib import Path
 @dataclass
 class ExtractionResult:
     """Result of extracting content from a file."""
+
     text: str
     content_type: str  # "code", "markdown", "structured_data", "document", "plain_text"
     metadata: dict = field(default_factory=dict)
@@ -17,12 +18,10 @@ class ExtractorBase(ABC):
     """Interface for file content extractors."""
 
     @abstractmethod
-    def supported_extensions(self) -> set[str]:
-        ...
+    def supported_extensions(self) -> set[str]: ...
 
     @abstractmethod
-    def supported_filenames(self) -> set[str]:
-        ...
+    def supported_filenames(self) -> set[str]: ...
 
     def can_extract(self, path: Path) -> bool:
         if path.name in self.supported_filenames():
@@ -30,8 +29,7 @@ class ExtractorBase(ABC):
         return path.suffix.lower() in self.supported_extensions()
 
     @abstractmethod
-    def extract(self, path: Path) -> ExtractionResult:
-        ...
+    def extract(self, path: Path) -> ExtractionResult: ...
 
     def max_file_size(self) -> int:
         return 1_000_000

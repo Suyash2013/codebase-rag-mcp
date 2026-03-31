@@ -16,9 +16,7 @@ def test_find_claude_config_returns_path():
 def test_setup_already_registered(tmp_path, capsys):
     """Should skip if already registered."""
     config_file = tmp_path / ".claude.json"
-    config_file.write_text(
-        json.dumps({"mcpServers": {"omni-rag": {"command": "omni-rag"}}})
-    )
+    config_file.write_text(json.dumps({"mcpServers": {"omni-rag": {"command": "omni-rag"}}}))
 
     with patch("mcp_server.cli._find_claude_config", return_value=config_file):
         setup()

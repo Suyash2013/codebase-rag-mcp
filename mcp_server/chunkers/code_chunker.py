@@ -13,8 +13,9 @@ class CodeChunker(ChunkerBase):
     def content_types(self) -> set[str]:
         return {"code"}
 
-    def chunk(self, text: str, chunk_size: int, chunk_overlap: int,
-              metadata: dict | None = None) -> list[Chunk]:
+    def chunk(
+        self, text: str, chunk_size: int, chunk_overlap: int, metadata: dict | None = None
+    ) -> list[Chunk]:
         if not text or not text.strip():
             return []
         lang = (metadata or {}).get("language", "unknown")
@@ -47,7 +48,11 @@ class CodeChunker(ChunkerBase):
                     preamble = "\n".join(lines[prev_end:start]).strip()
                     if preamble:
                         blocks.append(preamble)
-                end = node.end_lineno if hasattr(node, "end_lineno") and node.end_lineno else start + 1
+                end = (
+                    node.end_lineno
+                    if hasattr(node, "end_lineno") and node.end_lineno
+                    else start + 1
+                )
                 blocks.append("\n".join(lines[start:end]))
                 prev_end = end
 
@@ -87,8 +92,9 @@ class CodeChunker(ChunkerBase):
 
         return [b for b in blocks if b.strip()]
 
-    def _blocks_to_chunks(self, blocks: list[str], chunk_size: int,
-                          chunk_overlap: int, metadata: dict | None) -> list[Chunk]:
+    def _blocks_to_chunks(
+        self, blocks: list[str], chunk_size: int, chunk_overlap: int, metadata: dict | None
+    ) -> list[Chunk]:
         """Convert code blocks to chunks, merging small blocks and splitting large ones."""
         chunks: list[Chunk] = []
         current = ""

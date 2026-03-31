@@ -43,7 +43,7 @@ class FileHashDetector(ChangeDetector):
             has_changes=has_changes,
             changed_files=changed,
             deleted_files=deleted,
-            details=f"{len(changed)} changed, {len(deleted)} deleted"
+            details=f"{len(changed)} changed, {len(deleted)} deleted",
         )
 
     def save_checkpoint(self, directory: str) -> None:

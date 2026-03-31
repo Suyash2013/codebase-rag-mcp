@@ -10,8 +10,9 @@ class ParagraphChunker(ChunkerBase):
     def content_types(self) -> set[str]:
         return {"document"}
 
-    def chunk(self, text: str, chunk_size: int, chunk_overlap: int,
-              metadata: dict | None = None) -> list[Chunk]:
+    def chunk(
+        self, text: str, chunk_size: int, chunk_overlap: int, metadata: dict | None = None
+    ) -> list[Chunk]:
         if not text or not text.strip():
             return []
 

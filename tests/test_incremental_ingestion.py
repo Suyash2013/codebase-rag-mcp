@@ -38,7 +38,9 @@ def test_ingest_incremental_no_checkpoint(git_repo):
 @patch("mcp_server.ingestion.get_embedding")
 @patch("mcp_server.ingestion.get_embedding_dimension")
 @patch("mcp_server.ingestion.ensure_collection")
-def test_ingest_incremental_with_changes(mock_ensure, mock_dim, mock_embed, mock_upsert, mock_delete, git_repo):
+def test_ingest_incremental_with_changes(
+    mock_ensure, mock_dim, mock_embed, mock_upsert, mock_delete, git_repo
+):
     """Should only ingest changed files."""
     mock_dim.return_value = 384
     mock_embed.return_value = [0.1] * 384
@@ -46,6 +48,7 @@ def test_ingest_incremental_with_changes(mock_ensure, mock_dim, mock_embed, mock
 
     # Create a checkpoint
     from mcp_server.change_detection import create_detector
+
     detector = create_detector(str(git_repo))
     detector.save_checkpoint(str(git_repo))
 
@@ -69,6 +72,7 @@ def test_ingest_incremental_with_changes(mock_ensure, mock_dim, mock_embed, mock
 def test_ingest_incremental_no_changes(mock_ensure, mock_dim, mock_delete, git_repo):
     """Should return early if no changes."""
     from mcp_server.change_detection import create_detector
+
     detector = create_detector(str(git_repo))
     detector.save_checkpoint(str(git_repo))
 

@@ -7,6 +7,7 @@ log = logging.getLogger("omni-rag")
 
 try:
     import docx
+
     HAS_PYTHON_DOCX = True
 except ImportError:
     HAS_PYTHON_DOCX = False
@@ -25,7 +26,9 @@ class DocxExtractor(ExtractorBase):
         if not HAS_PYTHON_DOCX:
             msg = f"Skipping {path}: DOCX support not installed. Run 'pip install python-docx'"
             log.warning(msg)
-            return ExtractionResult(text=msg, content_type="document", metadata={"error": "missing_dependency"})
+            return ExtractionResult(
+                text=msg, content_type="document", metadata={"error": "missing_dependency"}
+            )
 
         try:
             doc = docx.Document(str(path))
@@ -33,4 +36,6 @@ class DocxExtractor(ExtractorBase):
             return ExtractionResult(text=text, content_type="document")
         except Exception as e:
             log.warning("Failed to extract DOCX %s: %s", path, e)
-            return ExtractionResult(text=str(e), content_type="document", metadata={"error": str(e)})
+            return ExtractionResult(
+                text=str(e), content_type="document", metadata={"error": str(e)}
+            )

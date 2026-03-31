@@ -87,9 +87,15 @@ def _collect_files(
                 continue
 
             # Filter by extensions if requested
-            if include_extensions and filepath.suffix.lower() not in include_extensions and filepath.name not in include_extensions:
+            if (
+                include_extensions
+                and filepath.suffix.lower() not in include_extensions
+                and filepath.name not in include_extensions
+            ):
                 continue
-            if exclude_extensions and (filepath.suffix.lower() in exclude_extensions or filepath.name in exclude_extensions):
+            if exclude_extensions and (
+                filepath.suffix.lower() in exclude_extensions or filepath.name in exclude_extensions
+            ):
                 continue
 
             if filepath.stat().st_size > settings.max_file_size_bytes:
@@ -118,8 +124,7 @@ def _embed_and_chunk_files(
         if elapsed > timeout_seconds:
             skipped = [rel for _, rel in files if rel not in set(processed_files)]
             log.warning(
-                "Ingestion timeout reached after %.1fs. "
-                "Processed %d/%d files. Skipped files: %s",
+                "Ingestion timeout reached after %.1fs. Processed %d/%d files. Skipped files: %s",
                 elapsed,
                 len(processed_files),
                 len(files),
@@ -141,10 +146,7 @@ def _embed_and_chunk_files(
                 metadata.update(result.metadata)
 
             chunk_objs = chunker.chunk(
-                result.text,
-                settings.chunk_size,
-                settings.chunk_overlap,
-                metadata=metadata
+                result.text, settings.chunk_size, settings.chunk_overlap, metadata=metadata
             )
 
             for _i, chunk in enumerate(chunk_objs):
@@ -156,7 +158,7 @@ def _embed_and_chunk_files(
                     "directory": directory,
                     "content_type": result.content_type,
                     "ingested_at": now,
-                    **chunk.metadata
+                    **chunk.metadata,
                 }
                 all_chunks.append(payload)
                 embedding = get_embedding(chunk.text)
@@ -259,7 +261,11 @@ def ingest_incremental(
     timeout_seconds = settings.ingestion_timeout_hours * 3600
     start_time = time.time()
 
-    log.info("Incremental ingestion: %d changed, %d deleted", len(report.changed_files), len(report.deleted_files))
+    log.info(
+        "Incremental ingestion: %d changed, %d deleted",
+        len(report.changed_files),
+        len(report.deleted_files),
+    )
 
     inc_exts = _normalise_extensions(include_extensions)
     exc_exts = _normalise_extensions(exclude_extensions)
@@ -333,7 +339,7 @@ def ingest_incremental(
         # TODO: Implement proper incremental BM25 update if needed.
         # For now, we'll just update with new chunks and hope for the best,
         # or rebuild if we can fetch all chunks.
-        bm25.update(add=all_chunks, remove=[]) # Placeholder for proper update
+        bm25.update(add=all_chunks, remove=[])  # Placeholder for proper update
         bm25.save()
     else:
         msg = "No chunks generated from changed files"

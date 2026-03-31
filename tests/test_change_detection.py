@@ -54,7 +54,9 @@ class TestFileHashDetector:
 class TestGitDetector:
     def _init_repo(self, path):
         subprocess.run(["git", "init"], cwd=path, capture_output=True)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"], cwd=path, capture_output=True
+        )
         subprocess.run(["git", "config", "user.name", "Test"], cwd=path, capture_output=True)
         (path / "file.txt").write_text("hello")
         subprocess.run(["git", "add", "."], cwd=path, capture_output=True)

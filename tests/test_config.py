@@ -74,6 +74,7 @@ def test_settings_legacy_env_vars():
     with patch.dict(os.environ, {**env, **removals}, clear=False):
         # Re-run migration
         from config.settings import _migrate_env_vars
+
         _migrate_env_vars()
         assert os.environ.get("OMNI_RAG_QDRANT_MODE") == "remote"
         assert os.environ.get("OMNI_RAG_QDRANT_COLLECTION") == "legacy_col"
