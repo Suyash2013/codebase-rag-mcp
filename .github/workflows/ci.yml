@@ -68,7 +68,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          direct_prompt: |
+          prompt: |
             Review this PR for correctness, security, type safety, and testing.
             Focus on substance, not style (ruff handles that).
 
@@ -94,7 +94,7 @@ jobs:
 
   test:
     name: Test (Python ${{ matrix.python-version }})
-    needs: [lint, typecheck, claude-review, gemini-review]
+    needs: [lint, typecheck, claude-review]
     if: |
       !cancelled() &&
       needs.lint.result == 'success' &&
