@@ -5,11 +5,8 @@ import math
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from mcp_server.storage.bm25_index import BM25Index
 from mcp_server.storage.hybrid import reciprocal_rank_fusion
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -20,7 +17,7 @@ def _chunk(chunk_id: str, text: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# BM25Index – tokenizer
+# BM25Index -tokenizer
 # ---------------------------------------------------------------------------
 
 class TestBM25Tokenizer:
@@ -47,7 +44,7 @@ class TestBM25Tokenizer:
 
 
 # ---------------------------------------------------------------------------
-# BM25Index – build & basic invariants
+# BM25Index -build & basic invariants
 # ---------------------------------------------------------------------------
 
 class TestBM25Build:
@@ -80,7 +77,7 @@ class TestBM25Build:
 
 
 # ---------------------------------------------------------------------------
-# BM25Index – search ranking
+# BM25Index -search ranking
 # ---------------------------------------------------------------------------
 
 class TestBM25Search:
@@ -120,7 +117,7 @@ class TestBM25Search:
 
 
 # ---------------------------------------------------------------------------
-# BM25Index – IDF calculation
+# BM25Index -IDF calculation
 # ---------------------------------------------------------------------------
 
 class TestBM25IDF:
@@ -143,7 +140,7 @@ class TestBM25IDF:
 
 
 # ---------------------------------------------------------------------------
-# BM25Index – update
+# BM25Index -update
 # ---------------------------------------------------------------------------
 
 class TestBM25Update:
@@ -186,7 +183,7 @@ class TestBM25Update:
 
 
 # ---------------------------------------------------------------------------
-# BM25Index – save / load
+# BM25Index -save / load
 # ---------------------------------------------------------------------------
 
 class TestBM25Persistence:
@@ -247,7 +244,7 @@ class TestBM25Persistence:
 
 
 # ---------------------------------------------------------------------------
-# BM25Index – k1 / b parameters
+# BM25Index -k1 / b parameters
 # ---------------------------------------------------------------------------
 
 class TestBM25Parameters:

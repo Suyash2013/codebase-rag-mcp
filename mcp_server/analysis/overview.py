@@ -1,5 +1,6 @@
 """Overview generator — compressed project summary for LLM context."""
 
+import contextlib
 import json
 import logging
 import os
@@ -304,10 +305,8 @@ def _compute_fingerprint(directory: str) -> str:
         for entry in base.iterdir():
             if entry.is_file():
                 file_count += 1
-                try:
+                with contextlib.suppress(OSError):
                     total_size += entry.stat().st_size
-                except OSError:
-                    pass
     except OSError:
         pass
     return f"{file_count}:{total_size}"

@@ -1,12 +1,14 @@
 """Recursive character text splitter — default fallback chunker."""
 
+from typing import ClassVar
+
 from mcp_server.chunkers.base import Chunk, ChunkerBase
 
 
 class RecursiveChunker(ChunkerBase):
     """Recursive character text splitter. Default fallback chunker."""
 
-    SEPARATORS = ["\n\n", "\n", " ", ""]
+    SEPARATORS: ClassVar[list[str]] = ["\n\n", "\n", " ", ""]
 
     def content_types(self) -> set[str]:
         return {"plain_text"}

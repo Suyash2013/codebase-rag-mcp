@@ -19,7 +19,7 @@ def reciprocal_rank_fusion(
         result_map[rid] = result
 
     # BM25 ranking
-    for rank, (chunk_id, bm25_score) in enumerate(bm25_results):
+    for rank, (chunk_id, _bm25_score) in enumerate(bm25_results):
         scores[chunk_id] = scores.get(chunk_id, 0) + bm25_weight / (k + rank + 1)
         if chunk_id not in result_map:
             result_map[chunk_id] = {"id": chunk_id}

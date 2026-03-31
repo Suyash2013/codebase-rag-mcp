@@ -237,7 +237,7 @@ def test_chunk_text_hard_split_base_case():
 def test_chunk_text_multiple_paragraphs_overlap():
     """Multiple paragraphs with overlap: verify chunk count and overlap prefix."""
     # Build 4 paragraphs each ~80 chars wide, chunk_size=100 so each para is its own chunk
-    paragraphs = ["Para%d " % i * 13 for i in range(4)]   # each ~91 chars
+    paragraphs = [f"Para{i} " * 13 for i in range(4)]   # each ~91 chars
     text = "\n\n".join(p.strip() for p in paragraphs)
     overlap = 15
     chunks = _chunk_text(text, chunk_size=100, chunk_overlap=overlap)

@@ -16,7 +16,7 @@ class ParagraphChunker(ChunkerBase):
             return []
 
         paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-        chunks = []
+        chunks: list[Chunk] = []
         current = ""
 
         for para in paragraphs:

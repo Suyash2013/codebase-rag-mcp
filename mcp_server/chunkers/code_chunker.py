@@ -90,7 +90,7 @@ class CodeChunker(ChunkerBase):
     def _blocks_to_chunks(self, blocks: list[str], chunk_size: int,
                           chunk_overlap: int, metadata: dict | None) -> list[Chunk]:
         """Convert code blocks to chunks, merging small blocks and splitting large ones."""
-        chunks = []
+        chunks: list[Chunk] = []
         current = ""
 
         for block in blocks:

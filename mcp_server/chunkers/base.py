@@ -40,4 +40,8 @@ def register_chunker(chunker: ChunkerBase) -> None:
 
 
 def get_chunker(content_type: str) -> ChunkerBase:
-    return _chunker_registry.get(content_type, _chunker_registry.get("plain_text"))
+    chunker = _chunker_registry.get(content_type) or _chunker_registry.get("plain_text")
+    if chunker is None:
+        from mcp_server.chunkers.recursive import RecursiveChunker
+        return RecursiveChunker()
+    return chunker

@@ -39,7 +39,7 @@ class BM25Index:
             remove_set = set(remove)
             temp_ids = []
             temp_tokens = []
-            for cid, tokens in zip(new_ids, new_tokens):
+            for cid, tokens in zip(new_ids, new_tokens, strict=False):
                 if cid not in remove_set:
                     temp_ids.append(cid)
                     temp_tokens.append(tokens)
@@ -90,7 +90,7 @@ class BM25Index:
         data_path.mkdir(parents=True, exist_ok=True)
 
         corpus = [{"id": cid, "tokens": tokens}
-                  for cid, tokens in zip(self._corpus_ids, self._corpus_tokens)]
+                  for cid, tokens in zip(self._corpus_ids, self._corpus_tokens, strict=False)]
         (data_path / "bm25_corpus.json").write_text(json.dumps(corpus))
 
     def load(self) -> bool:

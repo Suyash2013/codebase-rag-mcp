@@ -87,12 +87,10 @@ def _collect_files(
                 continue
 
             # Filter by extensions if requested
-            if include_extensions:
-                if filepath.suffix.lower() not in include_extensions and filepath.name not in include_extensions:
-                    continue
-            if exclude_extensions:
-                if filepath.suffix.lower() in exclude_extensions or filepath.name in exclude_extensions:
-                    continue
+            if include_extensions and filepath.suffix.lower() not in include_extensions and filepath.name not in include_extensions:
+                continue
+            if exclude_extensions and (filepath.suffix.lower() in exclude_extensions or filepath.name in exclude_extensions):
+                continue
 
             if filepath.stat().st_size > settings.max_file_size_bytes:
                 log.info("Skipping large file: %s", rel_path)
@@ -149,7 +147,7 @@ def _embed_and_chunk_files(
                 metadata=metadata
             )
 
-            for i, chunk in enumerate(chunk_objs):
+            for _i, chunk in enumerate(chunk_objs):
                 chunk_id = str(uuid.uuid4())
                 payload = {
                     "id": chunk_id,
@@ -298,12 +296,10 @@ def ingest_incremental(
         if not extractor:
             continue
 
-        if inc_exts:
-            if filepath.suffix.lower() not in inc_exts and filepath.name not in inc_exts:
-                continue
-        if exc_exts:
-            if filepath.suffix.lower() in exc_exts or filepath.name in exc_exts:
-                continue
+        if inc_exts and filepath.suffix.lower() not in inc_exts and filepath.name not in inc_exts:
+            continue
+        if exc_exts and (filepath.suffix.lower() in exc_exts or filepath.name in exc_exts):
+            continue
 
         if filepath.stat().st_size > settings.max_file_size_bytes:
             continue

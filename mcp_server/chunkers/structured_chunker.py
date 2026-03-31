@@ -34,7 +34,7 @@ class StructuredChunker(ChunkerBase):
 
         header = lines[0]
         rows = lines[1:]
-        chunks = []
+        chunks: list[Chunk] = []
         current_rows: list[str] = []
         current_size = len(header)
 
@@ -67,7 +67,7 @@ class StructuredChunker(ChunkerBase):
         if not isinstance(data, dict):
             return self._fallback.chunk(text, chunk_size, 0, metadata)
 
-        chunks = []
+        chunks: list[Chunk] = []
         current_obj: dict = {}
         current_size = 2  # {}
 

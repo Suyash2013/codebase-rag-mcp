@@ -18,7 +18,7 @@ class MarkdownChunker(ChunkerBase):
             return []
 
         sections = self._split_by_headings(text)
-        chunks = []
+        chunks: list[Chunk] = []
 
         for title, content in sections:
             section_text = content.strip()
@@ -46,7 +46,7 @@ class MarkdownChunker(ChunkerBase):
     def _split_by_headings(self, text: str) -> list[tuple[str | None, str]]:
         """Split text into (heading_title, content) pairs."""
         heading_pattern = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
-        sections = []
+        sections: list[tuple[str | None, str]] = []
         last_end = 0
         last_title = None
 

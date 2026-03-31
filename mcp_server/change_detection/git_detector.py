@@ -80,9 +80,7 @@ class GitDetector(ChangeDetector):
         # Ignore other common skip directories if they show up
         skip_dirs = {".git", "node_modules", "__pycache__", "venv", ".venv"}
         parts = Path(path).parts
-        if any(p in skip_dirs for p in parts):
-            return True
-        return False
+        return bool(any(p in skip_dirs for p in parts))
 
     def save_checkpoint(self, directory: str) -> None:
         commit = self._get_current_commit(directory)
