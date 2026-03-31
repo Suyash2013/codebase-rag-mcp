@@ -1,5 +1,6 @@
 from pathlib import Path
-from mcp_server.extractors.base import ExtractorBase, ExtractionResult
+
+from mcp_server.extractors.base import ExtractionResult, ExtractorBase
 
 _FORMAT_MAP = {
     ".json": "json",

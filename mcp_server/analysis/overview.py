@@ -9,7 +9,7 @@ from pathlib import Path
 
 from config.settings import settings
 
-log = logging.getLogger("rag-mcp")
+log = logging.getLogger("omni-rag")
 
 # Known project manifest files and what they indicate
 _MANIFEST_FILES = {
@@ -314,8 +314,8 @@ def _compute_fingerprint(directory: str) -> str:
 
 
 def save_overview(directory: str, overview: dict) -> str:
-    """Save overview and its fingerprint to .rag-mcp/overview.json."""
-    cache_dir = Path(directory) / ".rag-mcp"
+    """Save overview and its fingerprint to .omni-rag/overview.json."""
+    cache_dir = Path(directory) / ".omni-rag"
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = cache_dir / "overview.json"
     fingerprint = _compute_fingerprint(directory)
@@ -330,7 +330,7 @@ def load_cached_overview(directory: str) -> dict | None:
 
     Returns None when the cache is missing or stale (fingerprint mismatch).
     """
-    path = Path(directory) / ".rag-mcp" / "overview.json"
+    path = Path(directory) / ".omni-rag" / "overview.json"
     if not path.exists():
         return None
     try:

@@ -65,12 +65,12 @@ class TestIntegrationPipeline:
         env_patch = patch.dict(
             os.environ,
             {
-                "RAG_QDRANT_MODE": "local",
-                "RAG_EMBEDDING_PROVIDER": "onnx",
-                "RAG_WORKING_DIRECTORY": self.codebase_dir,
-                "RAG_QDRANT_COLLECTION": "test_integration",
-                "RAG_CHUNK_SIZE": "500",
-                "RAG_CHUNK_OVERLAP": "50",
+                "OMNI_RAG_QDRANT_MODE": "local",
+                "OMNI_RAG_EMBEDDING_PROVIDER": "onnx",
+                "OMNI_RAG_WORKING_DIRECTORY": self.codebase_dir,
+                "OMNI_RAG_QDRANT_COLLECTION": "test_integration",
+                "OMNI_RAG_CHUNK_SIZE": "500",
+                "OMNI_RAG_CHUNK_OVERLAP": "50",
             },
         )
         env_patch.start()

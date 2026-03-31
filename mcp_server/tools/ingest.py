@@ -11,14 +11,14 @@ from mcp_server.ingestion import (
 )
 
 
-def ingest_current_directory(
+def ingest(
     force: bool = False,
     include_extensions: list[str] | None = None,
     exclude_extensions: list[str] | None = None,
 ) -> str:
     """Manually trigger indexing of the current working directory.
 
-    The codebase auto-indexes on first search, so you rarely need this.
+    Auto-indexes on first search, so you rarely need this.
     By default, does incremental indexing (only changed files).
     Use force=True to do a full re-index from scratch.
 
@@ -47,13 +47,13 @@ def ingest_current_directory(
         return f"Error during ingestion: {exc}"
 
 
-def check_index_status() -> str:
-    """Check whether the codebase index is current.
+def check_status() -> str:
+    """Check whether the index for the current directory is up to date.
 
     Call this FIRST if you're unsure whether to use semantic search or
     fall back to file-by-file reading. Returns whether the directory is
-    indexed and whether there are uncommitted changes that might make
-    the index stale.
+    indexed and whether there are local changes that might make the
+    index stale.
     """
     directory = settings.get_working_directory()
 

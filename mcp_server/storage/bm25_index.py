@@ -1,12 +1,12 @@
 import json
+import logging
 import math
 import re
-import logging
 from pathlib import Path
 
-log = logging.getLogger("rag-mcp")
+log = logging.getLogger("omni-rag")
 
-DATA_DIR = ".rag-mcp"
+DATA_DIR = ".omni-rag"
 
 
 class BM25Index:

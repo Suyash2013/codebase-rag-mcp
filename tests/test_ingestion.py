@@ -1,14 +1,12 @@
 """Tests for ingestion engine."""
 
-import pytest
-from pathlib import Path
 
+from mcp_server.chunkers.recursive import RecursiveChunker
 from mcp_server.ingestion import (
     _collect_files,
     _load_gitignore,
     _normalise_extensions,
 )
-from mcp_server.chunkers.recursive import RecursiveChunker
 
 # Compatibility shim: old _chunk_text tests now use RecursiveChunker
 _rc = RecursiveChunker()
@@ -96,10 +94,10 @@ def test_collect_files_include_extensions(tmp_codebase):
     """Only files with the specified extensions are collected."""
     files = _collect_files(str(tmp_codebase), include_extensions={".py"})
     rel_paths = [rel for _, rel in files]
-    
+
     # Python files should be included
     assert any(p.endswith(".py") for p in rel_paths)
-    
+
     # JS and YAML should be excluded (unless they are special files that we don't have here)
     assert not any(p.endswith(".js") for p in rel_paths)
     assert not any(p.endswith(".yaml") for p in rel_paths)
@@ -117,6 +115,7 @@ def test_collect_files_exclude_extensions(tmp_codebase):
 def test_collect_files_no_filters(tmp_codebase):
     """Without filters all default text files are collected."""
     from unittest.mock import patch
+
     from mcp_server.extractors import get_extractor
 
     def mock_get_extractor(path):
@@ -126,7 +125,7 @@ def test_collect_files_no_filters(tmp_codebase):
 
     with patch("mcp_server.ingestion.get_extractor", side_effect=mock_get_extractor):
         files = _collect_files(str(tmp_codebase))
-    
+
     rel_paths = [rel for _, rel in files]
     assert any(p.endswith(".py") for p in rel_paths)
     assert any(p.endswith(".js") for p in rel_paths)

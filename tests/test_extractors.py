@@ -1,10 +1,8 @@
 """Tests for extractor base, TextExtractor, and CodeExtractor."""
 
-import os
-from pathlib import Path
 from mcp_server.extractors.base import ExtractionResult
-from mcp_server.extractors.text import TextExtractor
 from mcp_server.extractors.code import CodeExtractor
+from mcp_server.extractors.text import TextExtractor
 
 
 class TestTextExtractor:

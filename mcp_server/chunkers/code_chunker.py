@@ -1,6 +1,7 @@
 import ast
 import re
-from mcp_server.chunkers.base import ChunkerBase, Chunk
+
+from mcp_server.chunkers.base import Chunk, ChunkerBase
 from mcp_server.chunkers.recursive import RecursiveChunker
 
 

@@ -1,7 +1,8 @@
 """Extractor for source code files."""
 
 from pathlib import Path
-from mcp_server.extractors.base import ExtractorBase, ExtractionResult
+
+from mcp_server.extractors.base import ExtractionResult, ExtractorBase
 
 # Language detection map
 _LANG_MAP = {

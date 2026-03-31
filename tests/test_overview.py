@@ -130,7 +130,7 @@ def test_save_overview_stores_fingerprint(tmp_path):
     with patch("mcp_server.analysis.overview._compute_fingerprint", return_value=fake_hash):
         save_overview(str(tmp_path), overview)
 
-    cache_path = tmp_path / ".rag-mcp" / "overview.json"
+    cache_path = tmp_path / ".omni-rag" / "overview.json"
     assert cache_path.exists()
     payload = json.loads(cache_path.read_text())
     assert payload["fingerprint"] == fake_hash
@@ -166,7 +166,7 @@ def test_load_cached_overview_returns_none_on_fingerprint_mismatch(tmp_path):
 
 def test_load_cached_overview_returns_none_for_legacy_format(tmp_path):
     """load_cached_overview should return None for old-style cache files without fingerprint."""
-    cache_dir = tmp_path / ".rag-mcp"
+    cache_dir = tmp_path / ".omni-rag"
     cache_dir.mkdir()
     # Write a legacy cache: raw overview dict with no wrapping
     legacy = {"total_files": 10, "languages": []}

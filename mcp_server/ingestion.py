@@ -14,15 +14,15 @@ from mcp_server.change_detection import create_detector
 from mcp_server.chunkers import get_chunker
 from mcp_server.embeddings import get_embedding, get_embedding_dimension
 from mcp_server.extractors import get_extractor
-from mcp_server.storage import BM25Index
 from mcp_server.qdrant_client import (
     delete_file_points,
     ensure_collection,
     is_directory_indexed,
     upsert_chunks,
 )
+from mcp_server.storage import BM25Index
 
-log = logging.getLogger("rag-mcp")
+log = logging.getLogger("omni-rag")
 
 
 def _load_gitignore(directory: str) -> pathspec.PathSpec | None:
@@ -136,15 +136,15 @@ def _embed_and_chunk_files(
 
             result = extractor.extract(filepath)
             chunker = get_chunker(result.content_type)
-            
+
             # Merge extractor metadata with passed-through metadata
             metadata = {"file_path": rel_path}
             if result.metadata:
                 metadata.update(result.metadata)
 
             chunk_objs = chunker.chunk(
-                result.text, 
-                settings.chunk_size, 
+                result.text,
+                settings.chunk_size,
                 settings.chunk_overlap,
                 metadata=metadata
             )
@@ -293,21 +293,21 @@ def ingest_incremental(
             continue
         if gitignore and gitignore.match_file(rel_path):
             continue
-        
+
         extractor = get_extractor(filepath)
         if not extractor:
             continue
-            
+
         if inc_exts:
             if filepath.suffix.lower() not in inc_exts and filepath.name not in inc_exts:
                 continue
         if exc_exts:
             if filepath.suffix.lower() in exc_exts or filepath.name in exc_exts:
                 continue
-                
+
         if filepath.stat().st_size > settings.max_file_size_bytes:
             continue
-            
+
         files_to_ingest.append((filepath, rel_path))
 
     if not files_to_ingest and not report.deleted_files:
@@ -329,13 +329,13 @@ def ingest_incremental(
         else:
             msg = "Cleaned up deleted files from index."
 
-        # Update BM25 index (full rebuild for simplicity in incremental for now, 
+        # Update BM25 index (full rebuild for simplicity in incremental for now,
         # as we need current corpus to do proper update)
         # In a real system, we'd query Qdrant for all chunks in this directory.
         # But for now, let's just use the ones we just generated + what we had?
         # Re-build from ALL chunks in directory is safest.
         # TODO: Implement proper incremental BM25 update if needed.
-        # For now, we'll just update with new chunks and hope for the best, 
+        # For now, we'll just update with new chunks and hope for the best,
         # or rebuild if we can fetch all chunks.
         bm25.update(add=all_chunks, remove=[]) # Placeholder for proper update
         bm25.save()

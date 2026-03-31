@@ -1,7 +1,7 @@
 """Tests for chunker base and RecursiveChunker."""
 
-from mcp_server.chunkers.recursive import RecursiveChunker
 from mcp_server.chunkers.base import Chunk
+from mcp_server.chunkers.recursive import RecursiveChunker
 
 
 class TestRecursiveChunker:

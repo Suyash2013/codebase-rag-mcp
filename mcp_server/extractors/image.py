@@ -1,12 +1,13 @@
 import logging
 from pathlib import Path
-from mcp_server.extractors.base import ExtractorBase, ExtractionResult
 
-log = logging.getLogger("rag-mcp")
+from mcp_server.extractors.base import ExtractionResult, ExtractorBase
+
+log = logging.getLogger("omni-rag")
 
 try:
-    from PIL import Image
     import pytesseract
+    from PIL import Image
     HAS_OCR = True
 except ImportError:
     HAS_OCR = False

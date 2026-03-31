@@ -1,8 +1,7 @@
 """Tests for incremental ingestion and change detection."""
 
 import subprocess
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -58,7 +57,7 @@ def test_ingest_incremental_with_changes(mock_ensure, mock_dim, mock_embed, mock
 
     result = ingest_incremental(str(git_repo))
     assert "Incrementally indexed" in result
-    
+
     # Verify checkpoint was updated
     report = detector.detect_changes(str(git_repo))
     assert not report.has_changes

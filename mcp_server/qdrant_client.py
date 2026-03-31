@@ -16,7 +16,7 @@ from qdrant_client.http.models import (
 
 from config.settings import settings
 
-log = logging.getLogger("rag-mcp")
+log = logging.getLogger("omni-rag")
 
 _client: QdrantClient | None = None
 
@@ -109,7 +109,7 @@ def upsert_chunks(
         # Everything but the vector and id goes into payload
         payload = dict(chunk)
         cid = payload.pop("id")
-        
+
         points.append(
             PointStruct(
                 id=cid,

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from config.settings import settings
 
-log = logging.getLogger("rag-mcp")
+log = logging.getLogger("omni-rag")
 
 # Directories to skip during analysis — driven by settings.skip_directories
 

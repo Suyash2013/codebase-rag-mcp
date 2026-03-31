@@ -8,7 +8,7 @@ import requests
 from config.settings import settings
 from mcp_server.embeddings.base import EmbeddingProvider
 
-log = logging.getLogger("rag-mcp")
+log = logging.getLogger("omni-rag")
 
 
 class OllamaProvider(EmbeddingProvider):

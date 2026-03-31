@@ -1,6 +1,6 @@
 """Recursive character text splitter — default fallback chunker."""
 
-from mcp_server.chunkers.base import ChunkerBase, Chunk
+from mcp_server.chunkers.base import Chunk, ChunkerBase
 
 
 class RecursiveChunker(ChunkerBase):

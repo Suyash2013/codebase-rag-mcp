@@ -4,13 +4,10 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
-import pytest
-
 from mcp_server.ingestion import (
     _embed_and_chunk_files,
     ingest_directory,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -3,11 +3,12 @@
 import logging
 import subprocess
 from pathlib import Path
+
 from mcp_server.change_detection.base import ChangeDetector, ChangeReport
 
-log = logging.getLogger("rag-mcp")
+log = logging.getLogger("omni-rag")
 
-DATA_DIR = ".rag-mcp"
+DATA_DIR = ".omni-rag"
 
 
 class GitDetector(ChangeDetector):
@@ -51,10 +52,10 @@ class GitDetector(ChangeDetector):
                     if len(line) > 3:
                         status = line[:2]
                         filepath = line[3:].strip()
-                        
+
                         if self._should_skip(filepath):
                             continue
-                            
+
                         if status[0] == "D" or status[1] == "D":
                             if filepath not in deleted:
                                 deleted.append(filepath)

@@ -5,11 +5,12 @@ import json
 import logging
 import os
 from pathlib import Path
+
 from mcp_server.change_detection.base import ChangeDetector, ChangeReport
 
-log = logging.getLogger("rag-mcp")
+log = logging.getLogger("omni-rag")
 
-DATA_DIR = ".rag-mcp"
+DATA_DIR = ".omni-rag"
 MANIFEST_FILE = "file_manifest.json"
 
 
@@ -29,9 +30,7 @@ class FileHashDetector(ChangeDetector):
 
         # Check for modified or new files
         for rel_path, info in current_manifest.items():
-            if rel_path not in old_manifest:
-                changed.append(rel_path)
-            elif info["hash"] != old_manifest[rel_path]["hash"]:
+            if rel_path not in old_manifest or info["hash"] != old_manifest[rel_path]["hash"]:
                 changed.append(rel_path)
 
         # Check for deleted files

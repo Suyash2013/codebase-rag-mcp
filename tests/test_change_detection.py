@@ -1,10 +1,7 @@
 """Tests for change detection abstraction."""
 
-import json
-import os
 import subprocess
-from pathlib import Path
-from mcp_server.change_detection.base import ChangeReport
+
 from mcp_server.change_detection.file_hash_detector import FileHashDetector
 from mcp_server.change_detection.git_detector import GitDetector
 
@@ -92,11 +89,11 @@ class TestGitDetector:
         self._init_repo(tmp_path)
         detector = GitDetector()
         detector.save_checkpoint(str(tmp_path))
-        
+
         (tmp_path / "other.txt").write_text("other")
         subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
         subprocess.run(["git", "commit", "-m", "next"], cwd=tmp_path, capture_output=True)
-        
+
         report = detector.detect_changes(str(tmp_path))
         assert report.has_changes
         assert "other.txt" in report.changed_files

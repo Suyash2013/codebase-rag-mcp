@@ -1,8 +1,9 @@
 """Fallback extractor for plain text files."""
 
 from pathlib import Path
+
 from config.settings import settings
-from mcp_server.extractors.base import ExtractorBase, ExtractionResult
+from mcp_server.extractors.base import ExtractionResult, ExtractorBase
 
 
 class TextExtractor(ExtractorBase):

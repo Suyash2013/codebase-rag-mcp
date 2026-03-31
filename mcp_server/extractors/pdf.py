@@ -1,8 +1,9 @@
 import logging
 from pathlib import Path
-from mcp_server.extractors.base import ExtractorBase, ExtractionResult
 
-log = logging.getLogger("rag-mcp")
+from mcp_server.extractors.base import ExtractionResult, ExtractorBase
+
+log = logging.getLogger("omni-rag")
 
 try:
     import fitz  # PyMuPDF
