@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    # branches-ignore: ["**"] ensures only tag-triggered CI runs activate this workflow.
+    # Tags are not branches, so they bypass branch filters entirely.
+    branches-ignore: ["**"]
+
+permissions:
+  contents: write
+
+jobs:
+  github-release:
+    name: Create GitHub Release
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.event.workflow_run.head_branch }}" \
+            --generate-notes \
+            --title "${{ github.event.workflow_run.head_branch }}"
