@@ -184,7 +184,7 @@ The user must configure trusted publishing on PyPI:
 1. Go to https://pypi.org → `omni-rag-mcp` project → Settings → Publishing
 2. Add trusted publisher:
    - **Owner:** `Suyash2013`
-   - **Repository:** `omni-rag-mcp`
+   - **Repository:** `codebase-rag-mcp` (GitHub repo name, not PyPI package name)
    - **Workflow:** `ci.yml`
    - **Environment:** `pypi`
 
