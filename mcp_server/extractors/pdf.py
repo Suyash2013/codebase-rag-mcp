@@ -14,7 +14,7 @@ except ImportError:
 
 
 class PdfExtractor(ExtractorBase):
-    """PDF content extractor. Requires: pip install rag-mcp[pdf]"""
+    """PDF content extractor. Requires: pip install omni-rag-mcp[pdf]"""
 
     def supported_extensions(self) -> set[str]:
         return {".pdf"}

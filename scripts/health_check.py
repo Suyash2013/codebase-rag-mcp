@@ -86,14 +86,14 @@ def check_api_key(provider: str, key: str) -> bool:
         print(f"  API key configured (starts with {key[:8]}...)")
         return True
     else:
-        print(f"  FAILED: No API key set. Set RAG_{provider.upper()}_API_KEY.")
+        print(f"  FAILED: No API key set. Set OMNI_RAG_{provider.upper()}_API_KEY.")
         return False
 
 
 def main():
     from config.settings import settings
 
-    print("=== Codebase RAG MCP — Health Check ===\n")
+    print("=== omni-rag-mcp — Health Check ===\n")
     print("Configuration:")
     print(f"  Embedding provider: {settings.embedding_provider}")
     print(f"  Qdrant mode: {settings.qdrant_mode}")
