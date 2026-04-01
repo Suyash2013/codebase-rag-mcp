@@ -1,11 +1,11 @@
-# Contributing to codebase-rag-mcp
+# Contributing to omni-rag-mcp
 
 ## Development Setup
 
 ```bash
 # Clone and install in editable mode with dev dependencies
 git clone <repo-url>
-cd codebase-rag-mcp
+cd omni-rag-mcp
 pip install -e ".[dev]"
 
 # Install pre-commit hooks
@@ -39,7 +39,7 @@ pytest --cov
 
 1. Create `mcp_server/embeddings/your_provider.py` implementing the `EmbeddingProvider` base class.
 2. Implement the `embed()` and `get_dimension()` methods.
-3. Add any new settings to `config/settings.py` with the `RAG_` prefix.
+3. Add any new settings to `config/settings.py` with the `OMNI_RAG_` prefix.
 4. Register the provider in `mcp_server/embeddings/factory.py`.
 5. Add tests in `tests/test_embeddings.py`.
-6. Document the new `RAG_*` variables in `config/.env.example`.
+6. Document the new `OMNI_RAG_*` variables in `config/.env.example`.

@@ -20,9 +20,6 @@ def setup():
 
     # Find the omni-rag command
     cmd = shutil.which("omni-rag")
-    if not cmd:
-        # Try legacy name
-        cmd = shutil.which("rag-mcp")
     if cmd:
         command = cmd
     else:

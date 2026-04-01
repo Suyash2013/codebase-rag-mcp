@@ -23,4 +23,6 @@ dist/
 .rag-mcp/
 
 .gemini/
+.agent/
+.omni-rag/
 gha-creds-*.json
