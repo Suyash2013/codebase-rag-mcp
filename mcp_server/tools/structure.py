@@ -12,8 +12,8 @@ from mcp_server.analysis.structure import (
 # Directories to skip — driven by settings.skip_directories
 
 
-def get_file_signatures(file_pattern: str = "") -> str:
-    """Get function and class signatures from files matching a pattern.
+def get_file_signatures(file_path: str = "") -> str:
+    """Get function and class signatures from files matching a path.
 
     Use this to understand the API surface of a module without reading
     every file. Returns function names, parameters, return types, and
@@ -23,9 +23,9 @@ def get_file_signatures(file_pattern: str = "") -> str:
     of code modules.
 
     Args:
-        file_pattern: Substring to match in file paths (case-insensitive).
-                      E.g. "models", "api/routes", ".py", "utils".
-                      Empty string matches all files.
+        file_path: Substring to match in file paths (case-insensitive).
+                   E.g. "models", "api/routes", ".py", "utils".
+                   Empty string matches all files.
     """
     directory = settings.get_working_directory()
 
@@ -40,7 +40,7 @@ def get_file_signatures(file_pattern: str = "") -> str:
                 fp = Path(root) / f
                 rel_path = str(fp.relative_to(base))
 
-                if file_pattern and file_pattern.lower() not in rel_path.lower():
+                if file_path and file_path.lower() not in rel_path.lower():
                     continue
 
                 sigs = extract_signatures(str(fp))
@@ -48,7 +48,7 @@ def get_file_signatures(file_pattern: str = "") -> str:
                     results.append({"file": rel_path, "signatures": sigs})
 
         if not results:
-            return f"No signatures found for pattern '{file_pattern}'"
+            return f"No signatures found for path '{file_path}'"
 
         return _format_signatures(results)
 

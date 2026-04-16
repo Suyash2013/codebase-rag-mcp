@@ -21,7 +21,7 @@ _MODEL_REGISTRY = {
 def _download_model(model_name: str, model_dir: str) -> str:
     """Download ONNX model from HuggingFace Hub if not cached. Returns model directory path."""
     model_path = Path(model_dir) / model_name
-    onnx_path = model_path / "model.onnx"
+    onnx_path = model_path / "onnx" / "model.onnx"
 
     if onnx_path.exists():
         return str(model_path)
@@ -41,7 +41,7 @@ def _download_model(model_name: str, model_dir: str) -> str:
         snapshot_download(
             repo_id=str(info["repo_id"]),
             local_dir=str(model_path),
-            allow_patterns=["*.onnx", "*.json", "*.txt", "tokenizer*"],
+            allow_patterns=["onnx/model.onnx", "*.json", "*.txt", "tokenizer*"],
         )
     except ImportError:
         raise RuntimeError(
@@ -68,35 +68,51 @@ class OnnxLocalProvider(EmbeddingProvider):
         self._session: Any = None
         self._tokenizer: Any = None
         self._dimension: int | None = None
+        self._load_failed: bool = False
 
     def _ensure_loaded(self) -> None:
         if self._session is not None:
             return
+        if self._load_failed:
+            raise RuntimeError(
+                "ONNX model failed to load on a previous attempt. "
+                "Check logs for the original error."
+            )
 
         model_dir = settings.get_onnx_model_path()
         model_name = settings.onnx_model_name
 
-        model_path = _download_model(model_name, model_dir)
+        try:
+            model_path = _download_model(model_name, model_dir)
+        except Exception:
+            self._load_failed = True
+            raise
 
         try:
             import onnxruntime as ort
             from tokenizers import Tokenizer
         except ImportError as e:
+            self._load_failed = True
             raise RuntimeError(
                 f"ONNX provider requires onnxruntime and tokenizers. "
                 f"Install with: pip install onnxruntime tokenizers. Error: {e}"
             ) from e
 
-        onnx_file = Path(model_path) / "model.onnx"
+        onnx_file = Path(model_path) / "onnx" / "model.onnx"
         tokenizer_file = Path(model_path) / "tokenizer.json"
 
         if not tokenizer_file.exists():
+            self._load_failed = True
             raise RuntimeError(f"Tokenizer not found at {tokenizer_file}")
 
-        self._session = ort.InferenceSession(str(onnx_file))
-        self._tokenizer = Tokenizer.from_file(str(tokenizer_file))
-        self._tokenizer.enable_truncation(max_length=512)
-        self._tokenizer.enable_padding(length=512)
+        try:
+            self._session = ort.InferenceSession(str(onnx_file))
+            self._tokenizer = Tokenizer.from_file(str(tokenizer_file))
+            self._tokenizer.enable_truncation(max_length=512)
+            self._tokenizer.enable_padding(length=512)
+        except Exception:
+            self._load_failed = True
+            raise
 
         info = _MODEL_REGISTRY.get(model_name, {})
         self._dimension = info.get("dimension", 384)  # type: ignore[assignment]

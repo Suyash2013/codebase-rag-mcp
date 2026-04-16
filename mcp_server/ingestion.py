@@ -228,13 +228,19 @@ def ingest_directory(
 
     elapsed = time.time() - start_time
 
-    # Save checkpoint if no timeout
-    timed_out = len(processed_files) < len(files_to_ingest)
-    if not timed_out:
+    # Save checkpoint if we didn't hit the timeout and at least some files
+    # were processed. A systemic failure (e.g. ONNX model fails to load)
+    # causes all files to fail quickly — saving the checkpoint in that case
+    # would mark all files as "done" and skip them on the next incremental run.
+    timed_out = elapsed >= timeout_seconds
+    system_failure = len(processed_files) == 0 and len(files_to_ingest) > 0
+    if not timed_out and not system_failure:
         detector = create_detector(directory)
         detector.save_checkpoint(directory)
+    elif system_failure:
+        log.error("All files failed to process. Checkpoint NOT saved.")
     else:
-        log.warning("Ingestion incomplete. Checkpoint NOT saved.")
+        log.warning("Ingestion timed out after %.1fs. Checkpoint NOT saved.", elapsed)
 
     msg = f"Ingested {count} chunks from {len(processed_files)}/{len(files_to_ingest)} files ({elapsed:.1f}s)"
     log.info(msg)
@@ -344,8 +350,12 @@ def ingest_incremental(
     else:
         msg = "No chunks generated from changed files"
 
-    # Save checkpoint
-    if len(processed) == len(files_to_ingest):
+    # Save checkpoint if we didn't hit the timeout and at least some files
+    # were processed. A systemic failure skips saving to avoid marking
+    # failed files as successfully indexed.
+    elapsed = time.time() - start_time
+    system_failure = len(processed) == 0 and len(files_to_ingest) > 0
+    if elapsed < timeout_seconds and not system_failure:
         detector.save_checkpoint(directory)
 
     return msg
