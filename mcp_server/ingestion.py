@@ -228,13 +228,15 @@ def ingest_directory(
 
     elapsed = time.time() - start_time
 
-    # Save checkpoint if no timeout
-    timed_out = len(processed_files) < len(files_to_ingest)
+    # Save checkpoint if we didn't hit the timeout.
+    # Use elapsed time, not file count — individual file failures are logged
+    # as warnings and should not prevent the checkpoint from being saved.
+    timed_out = elapsed >= timeout_seconds
     if not timed_out:
         detector = create_detector(directory)
         detector.save_checkpoint(directory)
     else:
-        log.warning("Ingestion incomplete. Checkpoint NOT saved.")
+        log.warning("Ingestion timed out after %.1fs. Checkpoint NOT saved.", elapsed)
 
     msg = f"Ingested {count} chunks from {len(processed_files)}/{len(files_to_ingest)} files ({elapsed:.1f}s)"
     log.info(msg)
@@ -344,8 +346,9 @@ def ingest_incremental(
     else:
         msg = "No chunks generated from changed files"
 
-    # Save checkpoint
-    if len(processed) == len(files_to_ingest):
+    # Save checkpoint if we didn't hit the timeout.
+    elapsed = time.time() - start_time
+    if elapsed < timeout_seconds:
         detector.save_checkpoint(directory)
 
     return msg
