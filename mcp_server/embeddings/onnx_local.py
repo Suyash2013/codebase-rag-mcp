@@ -102,16 +102,17 @@ class OnnxLocalProvider(EmbeddingProvider):
         tokenizer_file = Path(model_path) / "tokenizer.json"
 
         if not tokenizer_file.exists():
+            self._load_failed = True
             raise RuntimeError(f"Tokenizer not found at {tokenizer_file}")
 
         try:
             self._session = ort.InferenceSession(str(onnx_file))
+            self._tokenizer = Tokenizer.from_file(str(tokenizer_file))
+            self._tokenizer.enable_truncation(max_length=512)
+            self._tokenizer.enable_padding(length=512)
         except Exception:
             self._load_failed = True
             raise
-        self._tokenizer = Tokenizer.from_file(str(tokenizer_file))
-        self._tokenizer.enable_truncation(max_length=512)
-        self._tokenizer.enable_padding(length=512)
 
         info = _MODEL_REGISTRY.get(model_name, {})
         self._dimension = info.get("dimension", 384)  # type: ignore[assignment]
